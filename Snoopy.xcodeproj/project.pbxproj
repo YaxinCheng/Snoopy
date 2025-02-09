@@ -16,6 +16,11 @@
 			path = Snoopy;
 			sourceTree = "<group>";
 		};
+		14FC7FA22D594B31004BDC22 /* Resources */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Resources;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -32,6 +37,7 @@
 		14FC7F7E2D59485C004BDC22 = {
 			isa = PBXGroup;
 			children = (
+				14FC7FA22D594B31004BDC22 /* Resources */,
 				14FC7F8A2D59485C004BDC22 /* Snoopy */,
 				14FC7F892D59485C004BDC22 /* Products */,
 			);
@@ -73,6 +79,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				14FC7F8A2D59485C004BDC22 /* Snoopy */,
+				14FC7FA22D594B31004BDC22 /* Resources */,
 			);
 			name = Snoopy;
 			packageProductDependencies = (
@@ -92,6 +99,7 @@
 				TargetAttributes = {
 					14FC7F872D59485C004BDC22 = {
 						CreatedOnToolsVersion = 16.2;
+						LastSwiftMigration = 1620;
 					};
 				};
 			};
@@ -253,18 +261,21 @@
 		14FC7F922D59485C004BDC22 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = SC2G2H5LRL;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSPrincipalClass = SnoopyView;
+				INFOPLIST_KEY_NSPrincipalClass = Snoopy.SnoopyView;
 				INSTALL_PATH = "$(HOME)/Library/Screen Savers";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ycheng.Snoopy;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
 				WRAPPER_EXTENSION = saver;
 			};
 			name = Debug;
@@ -272,18 +283,20 @@
 		14FC7F932D59485C004BDC22 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = SC2G2H5LRL;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSPrincipalClass = SnoopyView;
+				INFOPLIST_KEY_NSPrincipalClass = Snoopy.SnoopyView;
 				INSTALL_PATH = "$(HOME)/Library/Screen Savers";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ycheng.Snoopy;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
 				WRAPPER_EXTENSION = saver;
 			};
 			name = Release;
