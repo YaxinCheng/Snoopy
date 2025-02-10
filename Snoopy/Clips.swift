@@ -12,18 +12,17 @@ private let IGNORED_KEYWORDS: Set<String> = [
     "Outline",
     "Mask"
 ]
-private let SPECIAL_IMAGE_PREFIX: String = "IS"
 private let ALL_PREFIX_LEN: Int = "101_".count
 private let IMAGE_SEQUENCE_MAX: Int = 201
 
-enum Clip {
+enum Clip: Equatable {
     case video(Animation<URL>)
     case imageSequence(Animation<ImageSequence>)
     
-    init(name: String, type: String) {
+    init<S: StringProtocol, T: StringProtocol>(name: S, type: T) {
         switch type {
-        case "mov": self = .video(Animation(name: name))
-        case "heic": self = .imageSequence(Animation(name: name))
+        case "mov": self = .video(Animation(name: String(name)))
+        case "heic": self = .imageSequence(Animation(name: String(name)))
         default:
             fatalError("Unsupported clip type: \(type)")
         }
@@ -39,16 +38,16 @@ enum Clip {
 }
 
 struct ClipGroup {
-    private let clips: [String: Clip] // clip name to clip
-    private let specialImages: [URL] // images that will be used as decorations
+    let clips: [String: Clip] // clip name to clip
+    let specialImages: [URL] // images that will be used as decorations
     
     private init(clips: [String: Clip], specialImages: [URL]) {
         self.clips = clips
         self.specialImages = specialImages
     }
     
-    private static func groupFiles(_ files: [URL]) -> ClipGroup {
-        let fileNameSet = Set(files.lazy.map { $0.deletingPathExtension().lastPathComponent })
+    static func groupFiles(_ files: [URL]) -> ClipGroup {
+        var fileNameSet = Set(files.lazy.map { $0.deletingPathExtension().lastPathComponent })
         var grouped: [String: Clip] = [:]
         var specialImages: [URL] = []
         for fileURL in files {
@@ -58,19 +57,31 @@ struct ClipGroup {
                 continue
             }
             let animationName = String(parsedName.clipName)
+            if fileExtension == "heic" {
+                if isSnoopyHouse(clipName: parsedName.clipName) {
+                    specialImages.append(fileURL)
+                    continue
+                } else if !fileNameSet.contains(fileName) {
+                    continue
+                }
+            }
             if grouped[animationName] == nil {
                 grouped[animationName] = Clip(name: animationName, type: fileExtension)
             }
             switch grouped[animationName]! {
-            case .video(var animation):
+            case .video(let animation):
                 grouped[animationName] = Clip(
                     animation: configAnimation(animation, parsedName: parsedName, sourceFile: fileURL))
-            case .imageSequence(var animation):
-                let limit = findImageSequenceLimit(fileNames: fileNameSet, fileName: fileName)
+            case .imageSequence(let animation):
+                let template = findImageSequenceNameTemplate(fileName: fileName)
+                let limit = findImageSequenceLimit(fileNames: fileNameSet, fileNameTemplate: template)
+                for i in 0 ... limit {
+                    fileNameSet.remove(String(format: template, i))
+                }
                 grouped[animationName] = Clip(animation:
                     configAnimation(animation,
                                     parsedName: parsedName,
-                                    sourceFile: ImageSequence(name: animationName, lastFile: limit)))
+                                    sourceFile: ImageSequence(template: template, lastFile: limit)))
             }
         }
         return ClipGroup(clips: grouped, specialImages: specialImages)
@@ -99,48 +110,63 @@ struct ClipGroup {
             if IGNORED_KEYWORDS.contains(where: { $0 == components[index] }) {
                 return nil
             }
-            if components[index] == "From" {
+            let component = components[index]
+            if component == "From" {
                 parsed.from = components[index + 1]
                 index += 1
-            } else if components[index] == "To" {
+            } else if component == "To" {
                 parsed.to = components[index + 1]
                 index += 1
-            } else {
-                parsed.isLoop = components[index] == "Intro"
-                parsed.isOutro = components[index] == "Outro"
-                parsed.isLoop = components[index] == "Loop"
             }
+            // one name can only be either intro, outro, or loop, or none.
+            parsed.isIntro = parsed.isIntro || component == "Intro" || component == "From"
+            parsed.isOutro = !parsed.isIntro && (parsed.isOutro || component == "Outro" || component == "To")
+            parsed.isLoop = !parsed.isIntro && !parsed.isOutro && (parsed.isLoop || component == "Loop")
             index += 1
         }
         return parsed
+    }
+    
+    private static func isSnoopyHouse(clipName: Substring) -> Bool {
+        clipName.starts(with: "IS")
     }
     
     private static func configAnimation<FileType>(_ animation: Animation<FileType>,
                                                   parsedName: ParsedFileName,
                                                   sourceFile: FileType) -> Animation<FileType>
     {
-        var animation = animation
-        animation.from = parsedName.from.map(String.init)
-        animation.to = parsedName.to.map(String.init)
-        if parsedName.isIntro {
-            animation.intro = sourceFile
-        } else if parsedName.isLoop {
-            animation.loop = sourceFile
-        } else if parsedName.isOutro {
-            animation.outro = sourceFile
+        var mutableAnimation = animation
+        if let from = parsedName.from.map(String.init) {
+            mutableAnimation.from = from
         }
-        return animation
+        if let to = parsedName.to.map(String.init) {
+            mutableAnimation.to = to
+        }
+        let hasBothFromAndTo = false // parsedName.from != nil && parsedName.to != nil
+        let hasNeitherFromAndTo = parsedName.from == nil && parsedName.to == nil
+        if parsedName.isLoop {
+            mutableAnimation.loop = sourceFile
+        } else if parsedName.isOutro {
+            mutableAnimation.outro = sourceFile
+        } else if parsedName.isIntro || hasBothFromAndTo || hasNeitherFromAndTo {
+            mutableAnimation.intro = sourceFile
+        }
+        return mutableAnimation
+    }
+    
+    private static func findImageSequenceNameTemplate(fileName: String) -> String {
+        let lastUnderscore = fileName.lastIndex(of: "_") ?? fileName.endIndex
+        let baseName = fileName[..<lastUnderscore]
+        return "\(baseName)_%06d"
     }
     
     /// findImageSeuqenceLimit uses binary search to find the last image of a image sequence.
-    private static func findImageSequenceLimit(fileNames: Set<String>, fileName: String) -> UInt8 {
-        let lastUnderscore = fileName.lastIndex(of: "_") ?? fileName.endIndex
-        let baseName = fileName[..<lastUnderscore]
+    private static func findImageSequenceLimit(fileNames: Set<String>, fileNameTemplate: String) -> UInt8 {
         var left = 0
         var right = IMAGE_SEQUENCE_MAX
         while left < right {
             let mid = left + (right - left) / 2
-            let candidate = String(format: "\(baseName)_%06d.heic", mid)
+            let candidate = String(format: fileNameTemplate, mid)
             if fileNames.contains(candidate) {
                 left = mid + 1
             } else {
@@ -160,7 +186,16 @@ struct ClipGroup {
 ///     * Some animation may itself be a whole animation combining intro + loop + outro. In this case, we use this field as well and set other fields empty.
 ///   * loop - the file that contains the loop content of the animation.
 ///   * outro - the file that contains the outro content of the animation.
-struct Animation<FileType> {
+///
+/// # Types of Animations:
+///   * Intro from another animation (Intro From)
+///   * Intro from any animation (Intro)
+///   * Loop (loop)
+///   * Outro to any animation (Outro)
+///   * Outro to another animation (Outro To or To)
+///   * Whole animation (From To / No From,  no To, no Intro, no Outro)
+///
+struct Animation<FileType: Equatable>: Equatable {
     let name: String
     var from: String?
     var to: String?
@@ -171,7 +206,7 @@ struct Animation<FileType> {
 }
 
 /// ImageSequence files are a series of heic images that can be played one by one to form an animation.
-struct ImageSequence {
-    let name: String
+struct ImageSequence: Equatable {
+    let template: String
     let lastFile: UInt8
 }
