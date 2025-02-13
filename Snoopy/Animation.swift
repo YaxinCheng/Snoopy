@@ -15,40 +15,40 @@ private let IGNORED_KEYWORDS: Set<String> = [
 private let ALL_PREFIX_LEN: Int = "101_".count
 private let IMAGE_SEQUENCE_MAX: Int = 201
 
-enum Clip: Equatable {
-    case video(Animation<URL>)
-    case imageSequence(Animation<ImageSequence>)
+enum Animation: Equatable {
+    case video(Clip<URL>)
+    case imageSequence(Clip<ImageSequence>)
     
     init<S: StringProtocol, T: StringProtocol>(name: S, type: T) {
         switch type {
-        case "mov": self = .video(Animation(name: String(name)))
-        case "heic": self = .imageSequence(Animation(name: String(name)))
+        case "mov": self = .video(Clip(name: String(name)))
+        case "heic": self = .imageSequence(Clip(name: String(name)))
         default:
             fatalError("Unsupported clip type: \(type)")
         }
     }
     
-    init(animation: Animation<URL>) {
-        self = .video(animation)
+    init(clip: Clip<URL>) {
+        self = .video(clip)
     }
     
-    init(animation: Animation<ImageSequence>) {
-        self = .imageSequence(animation)
+    init(clip: Clip<ImageSequence>) {
+        self = .imageSequence(clip)
     }
 }
 
-struct ClipGroup {
-    let clips: [String: Clip] // clip name to clip
+struct AnimationCollection {
+    let animations: [String: Animation] // clip name to clip
     let specialImages: [URL] // images that will be used as decorations
     
-    private init(clips: [String: Clip], specialImages: [URL]) {
-        self.clips = clips
+    private init(clips: [String: Animation], specialImages: [URL]) {
+        self.animations = clips
         self.specialImages = specialImages
     }
     
-    static func groupFiles(_ files: [URL]) -> ClipGroup {
+    static func from(files: [URL]) -> AnimationCollection {
         var fileNameSet = Set(files.lazy.map { $0.deletingPathExtension().lastPathComponent })
-        var grouped: [String: Clip] = [:]
+        var grouped: [String: Animation] = [:]
         var specialImages: [URL] = []
         for fileURL in files {
             let fileExtension = fileURL.pathExtension
@@ -56,7 +56,6 @@ struct ClipGroup {
             guard let parsedName = parse(fileName: fileName) else {
                 continue
             }
-            let animationName = String(parsedName.clipName)
             if fileExtension == "heic" {
                 if isSnoopyHouse(clipName: parsedName.clipName) {
                     specialImages.append(fileURL)
@@ -65,26 +64,27 @@ struct ClipGroup {
                     continue
                 }
             }
-            if grouped[animationName] == nil {
-                grouped[animationName] = Clip(name: animationName, type: fileExtension)
+            let animationState = String(parsedName.clipName)
+            if grouped[animationState] == nil {
+                grouped[animationState] = Animation(name: animationState, type: fileExtension)
             }
-            switch grouped[animationName]! {
+            switch grouped[animationState]! {
             case .video(let animation):
-                grouped[animationName] = Clip(
-                    animation: configAnimation(animation, parsedName: parsedName, sourceFile: fileURL))
+                grouped[animationState] = Animation(
+                    clip: configClip(animation, parsedName: parsedName, sourceFile: fileURL))
             case .imageSequence(let animation):
                 let template = findImageSequenceNameTemplate(fileName: fileName)
                 let limit = findImageSequenceLimit(fileNames: fileNameSet, fileNameTemplate: template)
                 for i in 0 ... limit {
                     fileNameSet.remove(String(format: template, i))
                 }
-                grouped[animationName] = Clip(animation:
-                    configAnimation(animation,
-                                    parsedName: parsedName,
-                                    sourceFile: ImageSequence(template: template, lastFile: limit)))
+                grouped[animationState] = Animation(clip:
+                    configClip(animation,
+                               parsedName: parsedName,
+                               sourceFile: ImageSequence(template: template, lastFile: limit)))
             }
         }
-        return ClipGroup(clips: grouped, specialImages: specialImages)
+        return AnimationCollection(clips: grouped, specialImages: specialImages)
     }
     
     struct ParsedFileName {
@@ -127,15 +127,15 @@ struct ClipGroup {
         return parsed
     }
     
-    private static func isSnoopyHouse(clipName: Substring) -> Bool {
+    private static func isSnoopyHouse<S: StringProtocol>(clipName: S) -> Bool {
         clipName.starts(with: "IS")
     }
     
-    private static func configAnimation<FileType>(_ animation: Animation<FileType>,
-                                                  parsedName: ParsedFileName,
-                                                  sourceFile: FileType) -> Animation<FileType>
+    private static func configClip<FileType>(_ clip: Clip<FileType>,
+                                             parsedName: ParsedFileName,
+                                             sourceFile: FileType) -> Clip<FileType>
     {
-        var mutableAnimation = animation
+        var mutableAnimation = clip
         if let from = parsedName.from.map(String.init) {
             mutableAnimation.from = from
         }
@@ -195,7 +195,7 @@ struct ClipGroup {
 ///   * Outro to another animation (Outro To or To)
 ///   * Whole animation (From To / No From,  no To, no Intro, no Outro)
 ///
-struct Animation<FileType: Equatable>: Equatable {
+struct Clip<FileType: Equatable>: Equatable {
     let name: String
     var from: String?
     var to: String?

@@ -7,39 +7,38 @@
 	objects = {
 
 /* Begin PBXContainerItemProxy section */
-		140C90F52D5999A10086BC0E /* PBXContainerItemProxy */ = {
+		1405D2E02D5D9097003F3594 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 14FC7F7F2D59485C004BDC22 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 140C90E32D59999F0086BC0E;
+			remoteGlobalIDString = 1405D2CE2D5D9096003F3594;
 			remoteInfo = SnoopyTestApp;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		140C90E42D59999F0086BC0E /* SnoopyTestApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SnoopyTestApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		140C90F42D5999A10086BC0E /* SnoopyTestAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SnoopyTestAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		1405D2CF2D5D9096003F3594 /* SnoopyTestApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SnoopyTestApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1405D2DF2D5D9097003F3594 /* SnoopyTestAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SnoopyTestAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		14FC7F882D59485C004BDC22 /* Snoopy.saver */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Snoopy.saver; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		140C91102D5999CA0086BC0E /* Exceptions for "Snoopy" folder in "SnoopyTestAppTests" target */ = {
+		1405D2FB2D5D9151003F3594 /* Exceptions for "Snoopy" folder in "SnoopyTestAppTests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Clips.swift,
-				SnoopyView.swift,
+				Animation.swift,
 			);
-			target = 140C90F32D5999A10086BC0E /* SnoopyTestAppTests */;
+			target = 1405D2DE2D5D9097003F3594 /* SnoopyTestAppTests */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		140C90E52D59999F0086BC0E /* SnoopyTestApp */ = {
+		1405D2D02D5D9096003F3594 /* SnoopyTestApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = SnoopyTestApp;
 			sourceTree = "<group>";
 		};
-		140C90F72D5999A10086BC0E /* SnoopyTestAppTests */ = {
+		1405D2E22D5D9097003F3594 /* SnoopyTestAppTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = SnoopyTestAppTests;
 			sourceTree = "<group>";
@@ -47,7 +46,7 @@
 		14FC7F8A2D59485C004BDC22 /* Snoopy */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				140C91102D5999CA0086BC0E /* Exceptions for "Snoopy" folder in "SnoopyTestAppTests" target */,
+				1405D2FB2D5D9151003F3594 /* Exceptions for "Snoopy" folder in "SnoopyTestAppTests" target */,
 			);
 			path = Snoopy;
 			sourceTree = "<group>";
@@ -60,14 +59,14 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		140C90E12D59999F0086BC0E /* Frameworks */ = {
+		1405D2CC2D5D9096003F3594 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		140C90F12D5999A10086BC0E /* Frameworks */ = {
+		1405D2DC2D5D9097003F3594 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -89,8 +88,8 @@
 			children = (
 				14FC7FA22D594B31004BDC22 /* Resources */,
 				14FC7F8A2D59485C004BDC22 /* Snoopy */,
-				140C90E52D59999F0086BC0E /* SnoopyTestApp */,
-				140C90F72D5999A10086BC0E /* SnoopyTestAppTests */,
+				1405D2D02D5D9096003F3594 /* SnoopyTestApp */,
+				1405D2E22D5D9097003F3594 /* SnoopyTestAppTests */,
 				14FC7F892D59485C004BDC22 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -99,8 +98,8 @@
 			isa = PBXGroup;
 			children = (
 				14FC7F882D59485C004BDC22 /* Snoopy.saver */,
-				140C90E42D59999F0086BC0E /* SnoopyTestApp.app */,
-				140C90F42D5999A10086BC0E /* SnoopyTestAppTests.xctest */,
+				1405D2CF2D5D9096003F3594 /* SnoopyTestApp.app */,
+				1405D2DF2D5D9097003F3594 /* SnoopyTestAppTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -118,49 +117,49 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
-		140C90E32D59999F0086BC0E /* SnoopyTestApp */ = {
+		1405D2CE2D5D9096003F3594 /* SnoopyTestApp */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 140C91062D5999A10086BC0E /* Build configuration list for PBXNativeTarget "SnoopyTestApp" */;
+			buildConfigurationList = 1405D2F12D5D9098003F3594 /* Build configuration list for PBXNativeTarget "SnoopyTestApp" */;
 			buildPhases = (
-				140C90E02D59999F0086BC0E /* Sources */,
-				140C90E12D59999F0086BC0E /* Frameworks */,
-				140C90E22D59999F0086BC0E /* Resources */,
+				1405D2CB2D5D9096003F3594 /* Sources */,
+				1405D2CC2D5D9096003F3594 /* Frameworks */,
+				1405D2CD2D5D9096003F3594 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				140C90E52D59999F0086BC0E /* SnoopyTestApp */,
+				1405D2D02D5D9096003F3594 /* SnoopyTestApp */,
 			);
 			name = SnoopyTestApp;
 			packageProductDependencies = (
 			);
 			productName = SnoopyTestApp;
-			productReference = 140C90E42D59999F0086BC0E /* SnoopyTestApp.app */;
+			productReference = 1405D2CF2D5D9096003F3594 /* SnoopyTestApp.app */;
 			productType = "com.apple.product-type.application";
 		};
-		140C90F32D5999A10086BC0E /* SnoopyTestAppTests */ = {
+		1405D2DE2D5D9097003F3594 /* SnoopyTestAppTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 140C91092D5999A10086BC0E /* Build configuration list for PBXNativeTarget "SnoopyTestAppTests" */;
+			buildConfigurationList = 1405D2F42D5D9098003F3594 /* Build configuration list for PBXNativeTarget "SnoopyTestAppTests" */;
 			buildPhases = (
-				140C90F02D5999A10086BC0E /* Sources */,
-				140C90F12D5999A10086BC0E /* Frameworks */,
-				140C90F22D5999A10086BC0E /* Resources */,
+				1405D2DB2D5D9097003F3594 /* Sources */,
+				1405D2DC2D5D9097003F3594 /* Frameworks */,
+				1405D2DD2D5D9097003F3594 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				140C90F62D5999A10086BC0E /* PBXTargetDependency */,
+				1405D2E12D5D9097003F3594 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				140C90F72D5999A10086BC0E /* SnoopyTestAppTests */,
+				1405D2E22D5D9097003F3594 /* SnoopyTestAppTests */,
 			);
 			name = SnoopyTestAppTests;
 			packageProductDependencies = (
 			);
 			productName = SnoopyTestAppTests;
-			productReference = 140C90F42D5999A10086BC0E /* SnoopyTestAppTests.xctest */;
+			productReference = 1405D2DF2D5D9097003F3594 /* SnoopyTestAppTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 		14FC7F872D59485C004BDC22 /* Snoopy */ = {
@@ -197,12 +196,12 @@
 				LastSwiftUpdateCheck = 1620;
 				LastUpgradeCheck = 1620;
 				TargetAttributes = {
-					140C90E32D59999F0086BC0E = {
+					1405D2CE2D5D9096003F3594 = {
 						CreatedOnToolsVersion = 16.2;
 					};
-					140C90F32D5999A10086BC0E = {
+					1405D2DE2D5D9097003F3594 = {
 						CreatedOnToolsVersion = 16.2;
-						TestTargetID = 140C90E32D59999F0086BC0E;
+						TestTargetID = 1405D2CE2D5D9096003F3594;
 					};
 					14FC7F872D59485C004BDC22 = {
 						CreatedOnToolsVersion = 16.2;
@@ -225,21 +224,21 @@
 			projectRoot = "";
 			targets = (
 				14FC7F872D59485C004BDC22 /* Snoopy */,
-				140C90E32D59999F0086BC0E /* SnoopyTestApp */,
-				140C90F32D5999A10086BC0E /* SnoopyTestAppTests */,
+				1405D2CE2D5D9096003F3594 /* SnoopyTestApp */,
+				1405D2DE2D5D9097003F3594 /* SnoopyTestAppTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		140C90E22D59999F0086BC0E /* Resources */ = {
+		1405D2CD2D5D9096003F3594 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		140C90F22D5999A10086BC0E /* Resources */ = {
+		1405D2DD2D5D9097003F3594 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -256,14 +255,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		140C90E02D59999F0086BC0E /* Sources */ = {
+		1405D2CB2D5D9096003F3594 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		140C90F02D5999A10086BC0E /* Sources */ = {
+		1405D2DB2D5D9097003F3594 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -280,15 +279,15 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		140C90F62D5999A10086BC0E /* PBXTargetDependency */ = {
+		1405D2E12D5D9097003F3594 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 140C90E32D59999F0086BC0E /* SnoopyTestApp */;
-			targetProxy = 140C90F52D5999A10086BC0E /* PBXContainerItemProxy */;
+			target = 1405D2CE2D5D9096003F3594 /* SnoopyTestApp */;
+			targetProxy = 1405D2E02D5D9097003F3594 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		140C91072D5999A10086BC0E /* Debug */ = {
+		1405D2F22D5D9098003F3594 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -317,7 +316,7 @@
 			};
 			name = Debug;
 		};
-		140C91082D5999A10086BC0E /* Release */ = {
+		1405D2F32D5D9098003F3594 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -345,7 +344,7 @@
 			};
 			name = Release;
 		};
-		140C910A2D5999A10086BC0E /* Debug */ = {
+		1405D2F52D5D9098003F3594 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -365,7 +364,7 @@
 			};
 			name = Debug;
 		};
-		140C910B2D5999A10086BC0E /* Release */ = {
+		1405D2F62D5D9098003F3594 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -545,20 +544,20 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		140C91062D5999A10086BC0E /* Build configuration list for PBXNativeTarget "SnoopyTestApp" */ = {
+		1405D2F12D5D9098003F3594 /* Build configuration list for PBXNativeTarget "SnoopyTestApp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				140C91072D5999A10086BC0E /* Debug */,
-				140C91082D5999A10086BC0E /* Release */,
+				1405D2F22D5D9098003F3594 /* Debug */,
+				1405D2F32D5D9098003F3594 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		140C91092D5999A10086BC0E /* Build configuration list for PBXNativeTarget "SnoopyTestAppTests" */ = {
+		1405D2F42D5D9098003F3594 /* Build configuration list for PBXNativeTarget "SnoopyTestAppTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				140C910A2D5999A10086BC0E /* Debug */,
-				140C910B2D5999A10086BC0E /* Release */,
+				1405D2F52D5D9098003F3594 /* Debug */,
+				1405D2F62D5D9098003F3594 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

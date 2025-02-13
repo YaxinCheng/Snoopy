@@ -6,7 +6,6 @@
 //
 
 import Foundation
-@testable import SnoopyTestApp
 import Testing
 
 struct SnoopyTestAppTests {
@@ -26,7 +25,7 @@ struct SnoopyTestAppTests {
         URL(string: "101_TM001_Hide_Mask_000003.heic")!,
     ]
     private let imageSequencesWithFrom = [
-        // this is a artificial dataset. Resources doesn't contain these files
+        // this is a hypothetical dataset. Resources doesn't contain these files
         URL(string: "101_BP004_From_BP002_000000.heic")!,
         URL(string: "101_BP004_From_BP002_000001.heic")!,
         URL(string: "101_BP004_From_BP002_000002.heic")!,
@@ -59,14 +58,14 @@ struct SnoopyTestAppTests {
         URL(string: "102_SS001_Outro_000003.heic")!,
     ]
     private let imageSequencesWithFromAndTo = [
-        // this is a artificial dataset. Resources doesn't contain these files
+        // this is a hypothetical dataset. Resources doesn't contain these files
         URL(string: "101_BP004_From_BP002_To_BP003_000000.heic")!,
         URL(string: "101_BP004_From_BP002_To_BP003_000001.heic")!,
         URL(string: "101_BP004_From_BP002_To_BP003_000002.heic")!,
         URL(string: "101_BP004_From_BP002_To_BP003_000003.heic")!,
         URL(string: "101_BP004_From_BP002_To_BP003_000004.heic")!,
     ]
-    private let specialImages = ["IS12345.heic", "IS4321.heic"]
+    private let specialImages = [URL(string: "101_IS12345.heic")!, URL(string: "101_IS4321.heic")!]
 
     private let videoWithIntroFrom = URL(string: "104_AP031_Intro_From_BP004.mov")!
     private let videoWithIntro = URL(string: "101_004_Intro.mov")!
@@ -77,24 +76,27 @@ struct SnoopyTestAppTests {
     private let videoFullFledge = URL(string: "104_ST005_Reveal.mov")!
 
     @Test func TestIgnoreOutline() async throws {
-        let clipGroup = ClipGroup.groupFiles(imageSequencesOutline)
-        #expect(clipGroup.clips.isEmpty)
-        #expect(clipGroup.specialImages.isEmpty)
+        // 101_TM001_Hide_Outline_
+        let animationCollection = AnimationCollection.from(files: imageSequencesOutline)
+        #expect(animationCollection.animations.isEmpty)
+        #expect(animationCollection.specialImages.isEmpty)
     }
 
     @Test func TestIgnoreMask() async throws {
-        let clipGroup = ClipGroup.groupFiles(imageSequencesMask)
-        #expect(clipGroup.clips.isEmpty)
-        #expect(clipGroup.specialImages.isEmpty)
+        // 101_TM001_Hide_Mask_
+        let animationCollection = AnimationCollection.from(files: imageSequencesMask)
+        #expect(animationCollection.animations.isEmpty)
+        #expect(animationCollection.specialImages.isEmpty)
     }
 
     @Test func TestVideoGroupIntroFromLoopOutroTo() async throws {
-        let clipGroup = ClipGroup.groupFiles(
-            [videoWithIntroFrom, videoWithLoop, videoWithOutroTo].shuffled())
-        #expect(clipGroup.specialImages.isEmpty)
-        #expect(clipGroup.clips.count == 1)
-        #expect(clipGroup.clips.keys.first == "AP031")
-        #expect(clipGroup.clips["AP031"] == .video(Animation(
+        // 104_AP031_Intro_From_BP004 + 104_AP031_Loop + 104_AP031_Outro_To_BP001
+        let animationCollection = AnimationCollection.from(
+            files: [videoWithIntroFrom, videoWithLoop, videoWithOutroTo].shuffled())
+        #expect(animationCollection.specialImages.isEmpty)
+        #expect(animationCollection.animations.count == 1)
+        #expect(animationCollection.animations.keys.first == "AP031")
+        #expect(animationCollection.animations["AP031"] == .video(Clip(
             name: "AP031",
             from: "BP004",
             to: "BP001",
@@ -105,13 +107,14 @@ struct SnoopyTestAppTests {
     }
 
     @Test func TestVideoGroupIntroAndOutro() async throws {
-        let clipGroup = ClipGroup.groupFiles([
+        // 101_004_Intro + 101_004_Outro
+        let animationCollection = AnimationCollection.from(files: [
             videoWithIntro, videoWithOutro,
         ].shuffled())
-        #expect(clipGroup.specialImages.isEmpty)
-        #expect(clipGroup.clips.count == 1)
-        #expect(clipGroup.clips.keys.first == "004")
-        #expect(clipGroup.clips["004"] == .video(Animation(
+        #expect(animationCollection.specialImages.isEmpty)
+        #expect(animationCollection.animations.count == 1)
+        #expect(animationCollection.animations.keys.first == "004")
+        #expect(animationCollection.animations["004"] == .video(Clip(
             name: "004",
             intro: videoWithIntro,
             outro: videoWithOutro
@@ -119,13 +122,14 @@ struct SnoopyTestAppTests {
     }
 
     @Test func TestVideoGroupFromAndTo() async throws {
-        let clipGroup = ClipGroup.groupFiles([
+        // 103_CM021_From_BP004_To_BP003
+        let animationCollection = AnimationCollection.from(files: [
             videoWithFromAndTo,
         ])
-        #expect(clipGroup.specialImages.isEmpty)
-        #expect(clipGroup.clips.count == 1)
-        #expect(clipGroup.clips.keys.first == "CM021")
-        #expect(clipGroup.clips["CM021"] == .video(Animation(
+        #expect(animationCollection.specialImages.isEmpty)
+        #expect(animationCollection.animations.count == 1)
+        #expect(animationCollection.animations.keys.first == "CM021")
+        #expect(animationCollection.animations["CM021"] == .video(Clip(
             name: "CM021",
             from: "BP004",
             to: "BP003",
@@ -134,26 +138,28 @@ struct SnoopyTestAppTests {
     }
 
     @Test func TestVideoGroupFullFledged() async throws {
-        let clipGroup = ClipGroup.groupFiles([
+        // 104_ST005_Reveal
+        let animationCollection = AnimationCollection.from(files: [
             videoFullFledge,
         ])
-        #expect(clipGroup.specialImages.isEmpty)
-        #expect(clipGroup.clips.count == 1)
-        #expect(clipGroup.clips.keys.first == "ST005")
-        #expect(clipGroup.clips["ST005"] == .video(Animation(
+        #expect(animationCollection.specialImages.isEmpty)
+        #expect(animationCollection.animations.count == 1)
+        #expect(animationCollection.animations.keys.first == "ST005")
+        #expect(animationCollection.animations["ST005"] == .video(Clip(
             name: "ST005",
             intro: videoFullFledge
         )))
     }
 
     @Test func TestImageGroupFromTo() async throws {
-        let clipGroup = ClipGroup.groupFiles(
-            (imageSequencesWithFrom + imageSequencesWithTo)
+        // 101_BP004_From_BP002_ + 101_BP004_To_BP002_
+        let animationCollection = AnimationCollection.from(
+            files: (imageSequencesWithFrom + imageSequencesWithTo)
                 .shuffled())
-        #expect(clipGroup.specialImages.isEmpty)
-        #expect(clipGroup.clips.count == 1)
-        #expect(clipGroup.clips.keys.first == "BP004")
-        #expect(clipGroup.clips["BP004"] == .imageSequence(Animation(
+        #expect(animationCollection.specialImages.isEmpty)
+        #expect(animationCollection.animations.count == 1)
+        #expect(animationCollection.animations.keys.first == "BP004")
+        #expect(animationCollection.animations["BP004"] == .imageSequence(Clip(
             name: "BP004",
             from: "BP002",
             to: "BP002",
@@ -166,5 +172,61 @@ struct SnoopyTestAppTests {
                 lastFile: UInt8(imageSequencesWithTo.count - 1)
             )
         )))
+    }
+
+    @Test func TestImageGroupIntroLoopOutro() async throws {
+        // 102_SS001_Intro_ + 102_SS001_Loop_ + 102_SS001_Outro_
+        let animationCollection = AnimationCollection.from(
+            files: (imageSequencesWithIntro + imageSequencesWithLoop + imageSequencesWithOutro)
+                .shuffled())
+        #expect(animationCollection.specialImages.isEmpty)
+        #expect(animationCollection.animations.count == 1)
+        #expect(animationCollection.animations.keys.first == "SS001")
+        #expect(animationCollection.animations["SS001"] == .imageSequence(
+            Clip(
+                name: "SS001",
+                intro: ImageSequence(
+                    template: "102_SS001_Intro_%06d",
+                    lastFile: 2
+                ),
+                loop: ImageSequence(
+                    template: "102_SS001_Loop_%06d",
+                    lastFile: 4
+                ),
+                outro: ImageSequence(
+                    template: "102_SS001_Outro_%06d",
+                    lastFile: 3
+                )
+            )))
+    }
+
+    @Test func TestImageGroupFromAndTo() async throws {
+        // 101_BP004_From_BP002_To_BP003_
+        let animationCollection = AnimationCollection.from(
+            files: imageSequencesWithFromAndTo)
+        #expect(animationCollection.specialImages.isEmpty)
+        #expect(animationCollection.animations.count == 1)
+        #expect(animationCollection.animations.keys.first == "BP004")
+        #expect(animationCollection.animations["BP004"] == .imageSequence(
+            Clip(
+                name: "BP004",
+                from: "BP002",
+                to: "BP003",
+                intro: ImageSequence(
+                    template: "101_BP004_From_BP002_To_BP003_%06d",
+                    lastFile: 4
+                )
+            )
+        ))
+    }
+
+    @Test func TestGroupFoundSpecialImages() async throws {
+        let animationCollection = AnimationCollection.from(files: specialImages.shuffled())
+        #expect(animationCollection.specialImages.count == 2)
+        #expect(animationCollection.specialImages.sorted {
+            $0.absoluteString < $1.absoluteString
+        } == specialImages.sorted {
+            $0.absoluteString < $1.absoluteString
+        })
     }
 }
