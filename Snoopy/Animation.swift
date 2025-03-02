@@ -35,10 +35,19 @@ enum Animation: Equatable {
     init(clip: Clip<ImageSequence>) {
         self = .imageSequence(clip)
     }
+    
+    var urls: [URL] {
+        switch self {
+        case .video(let clip):
+            [clip.intro] + OptionalToArray(clip.loop) + OptionalToArray(clip.outro)
+        case .imageSequence(let clip):
+            clip.intro.urls + OptionalToArray(clip.loop?.urls) + OptionalToArray(clip.outro?.urls)
+        }
+    }
 }
 
 struct AnimationCollection {
-    let animations: [String: Animation] // clip name to clip
+    let animations: AnimationDict // clip name to clip
     let specialImages: [URL] // images that will be used as decorations
     
     private init(clips: [String: Animation], specialImages: [URL]) {
@@ -78,10 +87,11 @@ struct AnimationCollection {
                 for i in 0 ... limit {
                     fileNameSet.remove(String(format: template, i))
                 }
+                let imageSequence = ImageSequence(template: template,
+                                                  lastFile: limit,
+                                                  baseURL: fileURL.deletingLastPathComponent())
                 grouped[animationState] = Animation(clip:
-                    configClip(animation,
-                               parsedName: parsedName,
-                               sourceFile: ImageSequence(template: template, lastFile: limit)))
+                    configClip(animation, parsedName: parsedName, sourceFile: imageSequence))
             }
         }
         return AnimationCollection(clips: grouped, specialImages: specialImages)
@@ -177,6 +187,40 @@ struct AnimationCollection {
     }
 }
 
+extension AnimationCollection: Collection {
+    typealias AnimationDict = Dictionary<String, Animation>
+    typealias Index = AnimationDict.Index
+    typealias Element = AnimationDict.Element
+    
+    subscript(index: AnimationDict.Index) -> AnimationDict.Element {
+        animations[index]
+    }
+    
+    subscript(key: AnimationDict.Key) -> AnimationDict.Value? {
+        animations[key]
+    }
+    
+    func index(after i: AnimationDict.Index) -> AnimationDict.Index {
+        animations.index(after: i)
+    }
+    
+    var startIndex: AnimationDict.Index {
+        animations.startIndex
+    }
+    
+    var endIndex: AnimationDict.Index {
+        animations.endIndex
+    }
+    
+    var keys: AnimationDict.Keys {
+        animations.keys
+    }
+    
+    var values: AnimationDict.Values {
+        animations.values
+    }
+}
+
 /// Animation is a an abstraction for a group of content needs to be played.
 /// # parameters:
 ///   * name - is the name of the group of files. Normally the prefix shared by these files. A state. Like `SS001`.
@@ -207,6 +251,21 @@ struct Clip<FileType: Equatable>: Equatable {
 
 /// ImageSequence files are a series of heic images that can be played one by one to form an animation.
 struct ImageSequence: Equatable {
+    /// template is the file name template missing the index number.
+    /// The full file name can be reconstructed through String(format: template, $number).
+    /// *Note*: the reconstructed file name does not include the extension.
     let template: String
     let lastFile: UInt8
+    let baseURL: URL
+    
+    private func fileNameWithExtension(at index: UInt8) -> String {
+        String(format: "\(template).heic", index)
+    }
+    
+    /// urls returns
+    var urls: [URL] {
+        (0 ... lastFile)
+            .map { self.fileNameWithExtension(at: $0) }
+            .map { self.baseURL.appendingPathComponent($0) }
+    }
 }

@@ -5,15 +5,35 @@
 //  Created by Yaxin Cheng on 2025-02-09.
 //
 
+import AVKit
 import Foundation
-import ScreenSaver
+import SpriteKit
+import SwiftUI
 
-class SnoopyView: ScreenSaverView {
-    override init?(frame: NSRect, isPreview: Bool) {
-        super.init(frame: frame, isPreview: isPreview)
-    }
+struct SnoopyView: View {
+    @StateObject private var viewModel = SnoopyViewModel()
 
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
+    var body: some View {
+        animationView
+            .onAppear {
+                viewModel.startAnimation()
+            }
     }
+    
+    @ViewBuilder
+    var animationView: some View {
+        switch viewModel.currentAnimation {
+        case .video(let clip):
+            VideoView(videos: viewModel.expandUrls(from: clip))
+        case .imageSequence(let clip):
+            ImageSequenceView(images: viewModel.expandUrls(from: clip))
+        case nil:
+            // TODO: set up background
+            Color.black
+        }
+    }
+}
+
+#Preview {
+    SnoopyView()
 }

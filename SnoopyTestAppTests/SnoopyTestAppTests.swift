@@ -10,70 +10,70 @@ import Testing
 
 struct SnoopyTestAppTests {
     private let imageSequencesOutline = [
-        URL(string: "101_TM001_Hide_Outline_000000.heic")!,
-        URL(string: "101_TM001_Hide_Outline_000001.heic")!,
-        URL(string: "101_TM001_Hide_Outline_000002.heic")!,
-        URL(string: "101_TM001_Hide_Outline_000003.heic")!,
-        URL(string: "101_TM001_Hide_Outline_000004.heic")!,
-        URL(string: "101_TM001_Hide_Outline_000005.heic")!,
+        URL(string: "/path/to/101_TM001_Hide_Outline_000000.heic")!,
+        URL(string: "/path/to/101_TM001_Hide_Outline_000001.heic")!,
+        URL(string: "/path/to/101_TM001_Hide_Outline_000002.heic")!,
+        URL(string: "/path/to/101_TM001_Hide_Outline_000003.heic")!,
+        URL(string: "/path/to/101_TM001_Hide_Outline_000004.heic")!,
+        URL(string: "/path/to/101_TM001_Hide_Outline_000005.heic")!,
     ]
 
     private let imageSequencesMask = [
-        URL(string: "101_TM001_Hide_Mask_000000.heic")!,
-        URL(string: "101_TM001_Hide_Mask_000001.heic")!,
-        URL(string: "101_TM001_Hide_Mask_000002.heic")!,
-        URL(string: "101_TM001_Hide_Mask_000003.heic")!,
+        URL(string: "/path/to/101_TM001_Hide_Mask_000000.heic")!,
+        URL(string: "/path/to/101_TM001_Hide_Mask_000001.heic")!,
+        URL(string: "/path/to/101_TM001_Hide_Mask_000002.heic")!,
+        URL(string: "/path/to/101_TM001_Hide_Mask_000003.heic")!,
     ]
     private let imageSequencesWithFrom = [
         // this is a hypothetical dataset. Resources doesn't contain these files
-        URL(string: "101_BP004_From_BP002_000000.heic")!,
-        URL(string: "101_BP004_From_BP002_000001.heic")!,
-        URL(string: "101_BP004_From_BP002_000002.heic")!,
-        URL(string: "101_BP004_From_BP002_000003.heic")!,
-        URL(string: "101_BP004_From_BP002_000004.heic")!,
+        URL(string: "/path/to/101_BP004_From_BP002_000000.heic")!,
+        URL(string: "/path/to/101_BP004_From_BP002_000001.heic")!,
+        URL(string: "/path/to/101_BP004_From_BP002_000002.heic")!,
+        URL(string: "/path/to/101_BP004_From_BP002_000003.heic")!,
+        URL(string: "/path/to/101_BP004_From_BP002_000004.heic")!,
     ]
     private let imageSequencesWithIntro = [
-        URL(string: "102_SS001_Intro_000000.heic")!,
-        URL(string: "102_SS001_Intro_000001.heic")!,
-        URL(string: "102_SS001_Intro_000002.heic")!,
+        URL(string: "/path/to/102_SS001_Intro_000000.heic")!,
+        URL(string: "/path/to/102_SS001_Intro_000001.heic")!,
+        URL(string: "/path/to/102_SS001_Intro_000002.heic")!,
     ]
     private let imageSequencesWithLoop = [
-        URL(string: "102_SS001_Loop_000000.heic")!,
-        URL(string: "102_SS001_Loop_000001.heic")!,
-        URL(string: "102_SS001_Loop_000002.heic")!,
-        URL(string: "102_SS001_Loop_000003.heic")!,
-        URL(string: "102_SS001_Loop_000004.heic")!,
+        URL(string: "/path/to/102_SS001_Loop_000000.heic")!,
+        URL(string: "/path/to/102_SS001_Loop_000001.heic")!,
+        URL(string: "/path/to/102_SS001_Loop_000002.heic")!,
+        URL(string: "/path/to/102_SS001_Loop_000003.heic")!,
+        URL(string: "/path/to/102_SS001_Loop_000004.heic")!,
     ]
     private let imageSequencesWithTo = [
-        URL(string: "101_BP004_To_BP002_000000.heic")!,
-        URL(string: "101_BP004_To_BP002_000001.heic")!,
-        URL(string: "101_BP004_To_BP002_000002.heic")!,
-        URL(string: "101_BP004_To_BP002_000003.heic")!,
-        URL(string: "101_BP004_To_BP002_000004.heic")!,
+        URL(string: "/path/to/101_BP004_To_BP002_000000.heic")!,
+        URL(string: "/path/to/101_BP004_To_BP002_000001.heic")!,
+        URL(string: "/path/to/101_BP004_To_BP002_000002.heic")!,
+        URL(string: "/path/to/101_BP004_To_BP002_000003.heic")!,
+        URL(string: "/path/to/101_BP004_To_BP002_000004.heic")!,
     ]
     private let imageSequencesWithOutro = [
-        URL(string: "102_SS001_Outro_000000.heic")!,
-        URL(string: "102_SS001_Outro_000001.heic")!,
-        URL(string: "102_SS001_Outro_000002.heic")!,
-        URL(string: "102_SS001_Outro_000003.heic")!,
+        URL(string: "/path/to/102_SS001_Outro_000000.heic")!,
+        URL(string: "/path/to/102_SS001_Outro_000001.heic")!,
+        URL(string: "/path/to/102_SS001_Outro_000002.heic")!,
+        URL(string: "/path/to/102_SS001_Outro_000003.heic")!,
     ]
     private let imageSequencesWithFromAndTo = [
         // this is a hypothetical dataset. Resources doesn't contain these files
-        URL(string: "101_BP004_From_BP002_To_BP003_000000.heic")!,
-        URL(string: "101_BP004_From_BP002_To_BP003_000001.heic")!,
-        URL(string: "101_BP004_From_BP002_To_BP003_000002.heic")!,
-        URL(string: "101_BP004_From_BP002_To_BP003_000003.heic")!,
-        URL(string: "101_BP004_From_BP002_To_BP003_000004.heic")!,
+        URL(string: "/path/to/101_BP004_From_BP002_To_BP003_000000.heic")!,
+        URL(string: "/path/to/101_BP004_From_BP002_To_BP003_000001.heic")!,
+        URL(string: "/path/to/101_BP004_From_BP002_To_BP003_000002.heic")!,
+        URL(string: "/path/to/101_BP004_From_BP002_To_BP003_000003.heic")!,
+        URL(string: "/path/to/101_BP004_From_BP002_To_BP003_000004.heic")!,
     ]
-    private let specialImages = [URL(string: "101_IS12345.heic")!, URL(string: "101_IS4321.heic")!]
+    private let specialImages = [URL(string: "/path/to/101_IS12345.heic")!, URL(string: "/path/to/101_IS4321.heic")!]
 
-    private let videoWithIntroFrom = URL(string: "104_AP031_Intro_From_BP004.mov")!
-    private let videoWithIntro = URL(string: "101_004_Intro.mov")!
-    private let videoWithLoop = URL(string: "104_AP031_Loop.mov")!
-    private let videoWithOutroTo = URL(string: "104_AP031_Outro_To_BP001.mov")!
-    private let videoWithOutro = URL(string: "101_004_Outro.mov")!
-    private let videoWithFromAndTo = URL(string: "103_CM021_From_BP004_To_BP003.mov")!
-    private let videoFullFledge = URL(string: "104_ST005_Reveal.mov")!
+    private let videoWithIntroFrom = URL(string: "/path/to/104_AP031_Intro_From_BP004.mov")!
+    private let videoWithIntro = URL(string: "/path/to/101_004_Intro.mov")!
+    private let videoWithLoop = URL(string: "/path/to/104_AP031_Loop.mov")!
+    private let videoWithOutroTo = URL(string: "/path/to/104_AP031_Outro_To_BP001.mov")!
+    private let videoWithOutro = URL(string: "/path/to/101_004_Outro.mov")!
+    private let videoWithFromAndTo = URL(string: "/path/to/103_CM021_From_BP004_To_BP003.mov")!
+    private let videoFullFledge = URL(string: "/path/to/104_ST005_Reveal.mov")!
 
     @Test func TestIgnoreOutline() async throws {
         // 101_TM001_Hide_Outline_
@@ -165,11 +165,13 @@ struct SnoopyTestAppTests {
             to: "BP002",
             intro: ImageSequence(
                 template: "101_BP004_From_BP002_%06d",
-                lastFile: UInt8(imageSequencesWithFrom.count - 1)
+                lastFile: UInt8(imageSequencesWithFrom.count - 1),
+                baseURL: URL(string: "/path/to/")!
             ),
             outro: ImageSequence(
                 template: "101_BP004_To_BP002_%06d",
-                lastFile: UInt8(imageSequencesWithTo.count - 1)
+                lastFile: UInt8(imageSequencesWithTo.count - 1),
+                baseURL: URL(string: "/path/to/")!
             )
         )))
     }
@@ -187,15 +189,18 @@ struct SnoopyTestAppTests {
                 name: "SS001",
                 intro: ImageSequence(
                     template: "102_SS001_Intro_%06d",
-                    lastFile: 2
+                    lastFile: 2,
+                    baseURL: URL(string: "/path/to/")!
                 ),
                 loop: ImageSequence(
                     template: "102_SS001_Loop_%06d",
-                    lastFile: 4
+                    lastFile: 4,
+                    baseURL: URL(string: "/path/to/")!
                 ),
                 outro: ImageSequence(
                     template: "102_SS001_Outro_%06d",
-                    lastFile: 3
+                    lastFile: 3,
+                    baseURL: URL(string: "/path/to/")!
                 )
             )))
     }
@@ -214,7 +219,8 @@ struct SnoopyTestAppTests {
                 to: "BP003",
                 intro: ImageSequence(
                     template: "101_BP004_From_BP002_To_BP003_%06d",
-                    lastFile: 4
+                    lastFile: 4,
+                    baseURL: URL(string: "/path/to/")!
                 )
             )
         ))
