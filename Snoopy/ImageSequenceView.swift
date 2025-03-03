@@ -27,6 +27,9 @@ struct ImageSequenceView: View {
             .onDisappear {
                 viewModel.stop()
             }
+            .onChange(of: viewModel.hasFinishedPlaying) {
+                print("finished playing imageSeq")
+            }
     }
 }
 

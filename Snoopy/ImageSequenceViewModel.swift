@@ -16,6 +16,7 @@ class ImageSequenceViewModel: ObservableObject {
     private static let timerInterval: TimeInterval = 0.06
     private(set) var scene: SKScene
     private var node: SKSpriteNode
+    @Published private(set) var hasFinishedPlaying: Bool = false
     
     @MainActor
     init(images: [URL], index: Int = 0) {
@@ -39,6 +40,7 @@ class ImageSequenceViewModel: ObservableObject {
             .sink { [weak self] _ in
                 if (self?.index ?? 0) + 1 >= (self?.images.count ?? 0) {
                     self?.timer?.cancel()
+                    self?.hasFinishedPlaying = true
                 } else {
                     self?.index += 1
                 }
