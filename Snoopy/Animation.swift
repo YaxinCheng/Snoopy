@@ -135,7 +135,8 @@ struct AnimationCollection {
                 }
                 index = endOfAnimationIndex - 1
             default:
-                fatalError("Unexpected file type \(fileExtension)")
+//                fatalError("Unexpected file type \(fileName)")
+                Log.error(msg: "Unexpected file type \(fileName)")
             }
         }
         return AnimationCollection(clips: grouped, specialImages: specialImages, background: background)

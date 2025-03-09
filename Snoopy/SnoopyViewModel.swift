@@ -13,22 +13,25 @@ final class SnoopyViewModel: ObservableObject {
     private static let resourceFiles =
         Bundle(for: SnoopyViewModel.self).urls(forResourcesWithExtension: nil, subdirectory: nil) ?? []
     private let animations = AnimationCollection.from(files: resourceFiles)
-    @Published var currentAnimationName: String?
     @Published var currentAnimation: Animation?
 
     func startAnimation() {
-        guard let (name, animation) = randomAnimation() else { return }
-        currentAnimationName = name
-        currentAnimation = animation
+        currentAnimation = randomAnimation()
     }
 
-    private func randomAnimation() -> (String, Animation)? {
-        guard
-            let randomAnimationName = animations.keys.randomElement()
-        else {
-            return nil
+    func moveToTheNextAnimation() {
+        if let nextAnimationName = currentAnimation?.to {
+            guard let nextAnimation = animations[nextAnimationName]?.randomAnimation() else {
+                fatalError("Cannot find the next animation \"\(nextAnimationName)\"")
+            }
+            currentAnimation = nextAnimation
+        } else {
+            currentAnimation = randomAnimation()
         }
-        return (randomAnimationName, animations[randomAnimationName]!.randomAnimation())
+    }
+
+    private func randomAnimation() -> Animation? {
+        animations.values.randomElement()?.randomAnimation()
     }
 
     func expandUrls(from videoClip: Clip<URL>) -> [URL] {

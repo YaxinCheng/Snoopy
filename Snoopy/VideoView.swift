@@ -11,21 +11,23 @@ import SwiftUI
 
 struct VideoView: View {
     @StateObject private var viewModel: VideoViewModel
+    private let didFinishPlaying: Binding<Bool>?
 
-    init(videos: [URL]) {
+    init(videos: [URL], didFinishPlaying: Binding<Bool>? = nil) {
         _viewModel = StateObject(wrappedValue: VideoViewModel(videos: videos))
+        self.didFinishPlaying = didFinishPlaying
     }
 
     var body: some View {
         SpriteView(scene: viewModel.scene)
             .onAppear {
-                viewModel.play()
+                viewModel.start()
             }
             .onDisappear {
                 viewModel.stop()
             }
-            .onChange(of: viewModel.hasFinishedPlaying) {
-                print("finished playing video")
+            .onReceive(viewModel.observer) { _ in
+                didFinishPlaying?.wrappedValue.toggle()
             }
     }
 }

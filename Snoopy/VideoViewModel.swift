@@ -12,12 +12,11 @@ import SwiftUI
 
 @MainActor
 class VideoViewModel: ObservableObject {
-    @Published private(set) var videos: [URL]
+    private(set) var videos: [URL]
     private(set) var scene: SKScene
     private let videoNode: SKVideoNode
     private let lastPlayerItem: AVPlayerItem?
-    private var observer: AnyCancellable?
-    @Published private(set) var hasFinishedPlaying = false
+    let observer: NotificationCenter.Publisher
 
     init(videos: [URL]) {
         self.videos = videos
@@ -30,20 +29,18 @@ class VideoViewModel: ObservableObject {
         videoNode.position = CGPoint(x: scene.size.width / 2, y: scene.size.height / 2)
         videoNode.size = scene.size
         scene.addChild(videoNode)
-    }
-
-    func play() {
-        videoNode.play()
         observer = NotificationCenter
             .default
             .publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: lastPlayerItem)
-            .sink { [weak self] notification in
-                self?.hasFinishedPlaying = (notification.object as? AVPlayerItem) == self?.lastPlayerItem
-            }
     }
 
+    @MainActor
+    func start() {
+        videoNode.play()
+    }
+
+    @MainActor
     func stop() {
         videoNode.pause()
-        observer?.cancel()
     }
 }

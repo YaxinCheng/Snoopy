@@ -10,25 +10,27 @@ import SwiftUI
 
 struct ImageSequenceView: View {
     @StateObject private var viewModel: ImageSequenceViewModel
+    private let didFinishBinding: Binding<Bool>?
 
-    init(images: [URL]) {
+    init(images: [URL], didFinishBinding: Binding<Bool>? = nil) {
         _viewModel = StateObject(wrappedValue:
             ImageSequenceViewModel(images: images))
+        self.didFinishBinding = didFinishBinding
     }
 
     var body: some View {
         SpriteView(scene: viewModel.scene)
             .onAppear {
-                viewModel.play()
-            }
-            .onChange(of: viewModel.index) {
-                viewModel.update()
+                viewModel.start()
             }
             .onDisappear {
                 viewModel.stop()
             }
-            .onChange(of: viewModel.hasFinishedPlaying) {
-                print("finished playing imageSeq")
+            .onReceive(viewModel.timer) { _ in
+                viewModel.update()
+                if viewModel.hasFinishedPlaying {
+                    didFinishBinding?.wrappedValue.toggle()
+                }
             }
     }
 }

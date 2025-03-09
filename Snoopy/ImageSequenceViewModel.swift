@@ -9,15 +9,20 @@ import Combine
 import SpriteKit
 import SwiftUI
 
+private let TIMER_INTERNVAL: TimeInterval = 0.06
+
 class ImageSequenceViewModel: ObservableObject {
     private let images: [URL]
-    private var timer: AnyCancellable?
-    @Published private(set) var index = 0
-    private static let timerInterval: TimeInterval = 0.06
+    private var index = 0
+    let timer = Timer.publish(every: TIMER_INTERNVAL, on: .main, in: .common)
     private(set) var scene: SKScene
     private var node: SKSpriteNode
-    @Published private(set) var hasFinishedPlaying: Bool = false
-    
+    private var timerObserver: AnyCancellable?
+
+    var hasFinishedPlaying: Bool {
+        index >= images.count
+    }
+
     @MainActor
     init(images: [URL], index: Int = 0) {
         self.images = images
@@ -29,30 +34,29 @@ class ImageSequenceViewModel: ObservableObject {
         node.texture = texture
         scene.addChild(node)
     }
-    
+
     private var texture: SKTexture {
         SKTexture(imageNamed: images[index].path())
     }
-    
-    func play() {
-        timer = Timer.publish(every: Self.timerInterval, on: .main, in: .common)
-            .autoconnect()
-            .sink { [weak self] _ in
-                if (self?.index ?? 0) + 1 >= (self?.images.count ?? 0) {
-                    self?.timer?.cancel()
-                    self?.hasFinishedPlaying = true
-                } else {
-                    self?.index += 1
-                }
-            }
+
+    @MainActor
+    func start() {
+        timerObserver = AnyCancellable(timer.connect())
     }
-    
+
+    @MainActor
+    func stop() {
+        timerObserver?.cancel()
+        timerObserver = nil
+    }
+
     @MainActor
     func update() {
-        node.texture = texture
-    }
-    
-    func stop() {
-        timer?.cancel()
+        index += 1
+        if index < images.count {
+            node.texture = texture
+        } else {
+            timerObserver?.cancel()
+        }
     }
 }

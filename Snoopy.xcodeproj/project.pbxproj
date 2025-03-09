@@ -28,6 +28,7 @@
 			membershipExceptions = (
 				Animation.swift,
 				"Utils/Array+Extension.swift",
+				Utils/Log.swift,
 				"Utils/Optional+Extension.swift",
 			);
 			target = 1405D2DE2D5D9097003F3594 /* SnoopyTestAppTests */;
@@ -41,6 +42,7 @@
 				SnoopyView.swift,
 				SnoopyViewModel.swift,
 				"Utils/Array+Extension.swift",
+				Utils/Log.swift,
 				"Utils/Optional+Extension.swift",
 				VideoView.swift,
 				VideoViewModel.swift,
