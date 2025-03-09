@@ -36,5 +36,5 @@ struct ImageSequenceView: View {
 #Preview {
     let animations = AnimationCollection.from(files: Bundle(for: SnoopyViewModel.self).urls(forResourcesWithExtension: nil, subdirectory: nil) ?? [])
 
-    ImageSequenceView(images: animations["SS001"]!.urls)
+    ImageSequenceView(images: animations["SS001"]!.randomAnimation().urls)
 }

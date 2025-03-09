@@ -50,6 +50,7 @@
 		14B5116F2D73DFC00076DFC7 /* Exceptions for "Resources" folder in "SnoopyTestApp" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				000_Background.heic,
 				101_AP001_Intro_From_BP003.mov,
 				101_AP001_Loop.mov,
 				101_AP001_Outro_To_BP001.mov,

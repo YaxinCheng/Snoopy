@@ -73,7 +73,7 @@ struct SnoopyTestAppTests {
     private let videoWithOutroTo = URL(string: "/path/to/104_AP031_Outro_To_BP001.mov")!
     private let videoWithOutro = URL(string: "/path/to/101_004_Outro.mov")!
     private let videoWithFromAndTo = URL(string: "/path/to/103_CM021_From_BP004_To_BP003.mov")!
-    private let videoFullFledge = URL(string: "/path/to/104_ST005_Reveal.mov")!
+    private let videoFullFledge = URL(string: "/path/to/104_ST005.mov")!
 
     @Test func TestIgnoreOutline() async throws {
         // 101_TM001_Hide_Outline_
@@ -96,7 +96,7 @@ struct SnoopyTestAppTests {
         #expect(animationCollection.specialImages.isEmpty)
         #expect(animationCollection.animations.count == 1)
         #expect(animationCollection.animations.keys.first == "AP031")
-        #expect(animationCollection.animations["AP031"] == .video(Clip(
+        #expect(animationCollection.animations["AP031"]?.element(to: "BP001") == .video(Clip(
             name: "AP031",
             from: "BP004",
             to: "BP001",
@@ -114,7 +114,7 @@ struct SnoopyTestAppTests {
         #expect(animationCollection.specialImages.isEmpty)
         #expect(animationCollection.animations.count == 1)
         #expect(animationCollection.animations.keys.first == "004")
-        #expect(animationCollection.animations["004"] == .video(Clip(
+        #expect(animationCollection.animations["004"]?.element() == .video(Clip(
             name: "004",
             intro: videoWithIntro,
             outro: videoWithOutro
@@ -129,7 +129,7 @@ struct SnoopyTestAppTests {
         #expect(animationCollection.specialImages.isEmpty)
         #expect(animationCollection.animations.count == 1)
         #expect(animationCollection.animations.keys.first == "CM021")
-        #expect(animationCollection.animations["CM021"] == .video(Clip(
+        #expect(animationCollection.animations["CM021"]?.element(to: "BP003") == .video(Clip(
             name: "CM021",
             from: "BP004",
             to: "BP003",
@@ -145,7 +145,7 @@ struct SnoopyTestAppTests {
         #expect(animationCollection.specialImages.isEmpty)
         #expect(animationCollection.animations.count == 1)
         #expect(animationCollection.animations.keys.first == "ST005")
-        #expect(animationCollection.animations["ST005"] == .video(Clip(
+        #expect(animationCollection.animations["ST005"]?.element() == .video(Clip(
             name: "ST005",
             intro: videoFullFledge
         )))
@@ -159,17 +159,17 @@ struct SnoopyTestAppTests {
         #expect(animationCollection.specialImages.isEmpty)
         #expect(animationCollection.animations.count == 1)
         #expect(animationCollection.animations.keys.first == "BP004")
-        #expect(animationCollection.animations["BP004"] == .imageSequence(Clip(
+        #expect(animationCollection.animations["BP004"]?.element(to: "BP002") == .imageSequence(Clip(
             name: "BP004",
             from: "BP002",
             to: "BP002",
             intro: ImageSequence(
-                template: "101_BP004_From_BP002_%06d",
+                template: "101_BP004_From_BP002_",
                 lastFile: UInt8(imageSequencesWithFrom.count - 1),
                 baseURL: URL(string: "/path/to/")!
             ),
             outro: ImageSequence(
-                template: "101_BP004_To_BP002_%06d",
+                template: "101_BP004_To_BP002_",
                 lastFile: UInt8(imageSequencesWithTo.count - 1),
                 baseURL: URL(string: "/path/to/")!
             )
@@ -184,21 +184,21 @@ struct SnoopyTestAppTests {
         #expect(animationCollection.specialImages.isEmpty)
         #expect(animationCollection.animations.count == 1)
         #expect(animationCollection.animations.keys.first == "SS001")
-        #expect(animationCollection.animations["SS001"] == .imageSequence(
+        #expect(animationCollection.animations["SS001"]?.element() == .imageSequence(
             Clip(
                 name: "SS001",
                 intro: ImageSequence(
-                    template: "102_SS001_Intro_%06d",
+                    template: "102_SS001_Intro_",
                     lastFile: 2,
                     baseURL: URL(string: "/path/to/")!
                 ),
                 loop: ImageSequence(
-                    template: "102_SS001_Loop_%06d",
+                    template: "102_SS001_Loop_",
                     lastFile: 4,
                     baseURL: URL(string: "/path/to/")!
                 ),
                 outro: ImageSequence(
-                    template: "102_SS001_Outro_%06d",
+                    template: "102_SS001_Outro_",
                     lastFile: 3,
                     baseURL: URL(string: "/path/to/")!
                 )
@@ -212,13 +212,13 @@ struct SnoopyTestAppTests {
         #expect(animationCollection.specialImages.isEmpty)
         #expect(animationCollection.animations.count == 1)
         #expect(animationCollection.animations.keys.first == "BP004")
-        #expect(animationCollection.animations["BP004"] == .imageSequence(
+        #expect(animationCollection.animations["BP004"]?.element(to: "BP003") == .imageSequence(
             Clip(
                 name: "BP004",
                 from: "BP002",
                 to: "BP003",
                 intro: ImageSequence(
-                    template: "101_BP004_From_BP002_To_BP003_%06d",
+                    template: "101_BP004_From_BP002_To_BP003_",
                     lastFile: 4,
                     baseURL: URL(string: "/path/to/")!
                 )

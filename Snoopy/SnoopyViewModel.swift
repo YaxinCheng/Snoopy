@@ -16,10 +16,6 @@ final class SnoopyViewModel: ObservableObject {
     @Published var currentAnimationName: String?
     @Published var currentAnimation: Animation?
 
-    func urls(for name: String) -> [URL] {
-        animations[name]?.urls ?? []
-    }
-    
     func startAnimation() {
         guard let (name, animation) = randomAnimation() else { return }
         currentAnimationName = name
@@ -32,7 +28,7 @@ final class SnoopyViewModel: ObservableObject {
         else {
             return nil
         }
-        return (randomAnimationName, animations[randomAnimationName]!)
+        return (randomAnimationName, animations[randomAnimationName]!.randomAnimation())
     }
 
     func expandUrls(from videoClip: Clip<URL>) -> [URL] {
@@ -44,7 +40,7 @@ final class SnoopyViewModel: ObservableObject {
     }
 
     func expandUrls(from imageSequenceClip: Clip<ImageSequence>) -> [URL] {
-        var result = imageSequenceClip.intro.urls
+        var result = imageSequenceClip.intro?.urls ?? []
         let loopRepeatingLimit = UInt.random(in: 1...LOOP_REPEAT_LIMIT)
         result.append(contentsOf: OptionalToArray(imageSequenceClip.loop?.urls).repeat(count: loopRepeatingLimit))
         result.append(contentsOf: OptionalToArray(imageSequenceClip.outro?.urls))

@@ -33,5 +33,5 @@ struct VideoView: View {
 #Preview {
     let animations = AnimationCollection.from(files: Bundle(for: SnoopyViewModel.self).urls(forResourcesWithExtension: nil, subdirectory: nil) ?? [])
 
-    VideoView(videos: animations["AP021"]!.urls)
+    VideoView(videos: animations["AP021"]!.randomAnimation().urls)
 }
