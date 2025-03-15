@@ -37,15 +37,11 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Animation.swift,
-				ImageSequenceView.swift,
-				ImageSequenceViewModel.swift,
 				SnoopyView.swift,
 				SnoopyViewModel.swift,
 				"Utils/Array+Extension.swift",
 				Utils/Log.swift,
 				"Utils/Optional+Extension.swift",
-				VideoView.swift,
-				VideoViewModel.swift,
 			);
 			target = 1405D2CE2D5D9096003F3594 /* SnoopyTestApp */;
 		};

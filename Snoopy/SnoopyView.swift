@@ -12,29 +12,27 @@ import SwiftUI
 
 struct SnoopyView: View {
     @StateObject private var viewModel = SnoopyViewModel()
-    @State private var didFinishPlaying = false
+    private var scene = SKScene()
 
     var body: some View {
-        animationView
+        SpriteView(scene: scene)
             .onAppear {
-                viewModel.startAnimation()
+                if viewModel.currentAnimation == nil {
+                    viewModel.setup(scene: scene)
+                    viewModel.startAnimation()
+                }
             }
-            .onChange(of: didFinishPlaying) {
-                viewModel.moveToTheNextAnimation()
+            .onReceive(viewModel.imageSequenceTimer) { _ in
+                viewModel.updateImageSequence()
             }
-    }
-
-    @ViewBuilder
-    var animationView: some View {
-        switch viewModel.currentAnimation {
-        case .video(let clip):
-            VideoView(videos: viewModel.expandUrls(from: clip), didFinishPlaying: $didFinishPlaying)
-        case .imageSequence(let clip):
-            ImageSequenceView(images: viewModel.expandUrls(from: clip), didFinishBinding: $didFinishPlaying)
-        case nil:
-            // TODO: set up background
-            Color.black
-        }
+            .onReceive(viewModel.videoDidFinishPlaying) { _ in
+                viewModel.videoFinishedPlaying()
+            }
+            .onChange(of: viewModel.didFinishPlaying) {
+                if viewModel.didFinishPlaying {
+                    viewModel.moveToTheNextAnimation(scene: scene)
+                }
+            }
     }
 }
 

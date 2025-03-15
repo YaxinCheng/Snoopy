@@ -12,12 +12,12 @@ import SwiftUI
 class MainView: ScreenSaverView {
     override init?(frame: NSRect, isPreview: Bool) {
         super.init(frame: frame, isPreview: isPreview)
-        addSubview(toNSView(view: SnoopyView()))
+//        addSubview(toNSView(view: SnoopyView()))
     }
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
-        addSubview(toNSView(view: SnoopyView()))
+//        addSubview(toNSView(view: SnoopyView()))
     }
 
     private func toNSView(view: some View) -> NSView {

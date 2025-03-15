@@ -19,10 +19,17 @@ private let IMAGE_SEQUENCE_MAX: Int = 201
 private let HEIC_FILE_TYPE: String = "heic"
 private let MOV_FILE_TYPE: String = "mov"
 
+/// AnimationBundle is a data structure storing the animations with the same name.
+/// One animation may have multiple variants based on the destination,
+/// and they can all be stored in a bundle sharing the same animation name.
 struct AnimationBundle {
     private static let SINGLETON_TRANSITION_KEY = "$singleton"
     
     private var variations: [String: Animation]
+    
+    var count: Int {
+        variations.count
+    }
     
     init(variations: [String: Animation] = [:]) {
         self.variations = variations
@@ -86,6 +93,12 @@ enum Animation: Equatable {
     }
 }
 
+/// AnimationCollection is a data structure that stores all the animations.
+/// It is a map has the mapping from the animation name to an AnimationBundle.
+/// The structure is like the following diagram:
+///
+/// AnimationCollection ---> (AnimationName, AnimationBundle)\* ---> Animation\*
+/// ---> Clip\* ---> URL\*
 struct AnimationCollection {
     typealias AnimationDict = [String: AnimationBundle]
     
@@ -210,8 +223,11 @@ struct AnimationCollection {
     }
     
     private static func constructImageSequenceAnimation(from files: ArraySlice<URL>) -> [Animation] {
-        var currentClip: Clip<ImageSequence>?
+        var introClip: Clip<ImageSequence>?
+        var loopClip: Clip<ImageSequence>?
+        var outroClips: [Clip<ImageSequence>] = []
         var animations = [Animation]()
+        var resourceName = ""
         var index = files.startIndex
         while index < files.endIndex {
             let fileName = files[index].deletingPathExtension().lastPathComponent
@@ -222,16 +238,36 @@ struct AnimationCollection {
             let imageSequence = ImageSequence(template: template,
                                               lastFile: UInt8(endIndexOfClip - index - 1),
                                               baseURL: files[index].deletingLastPathComponent())
-            let clip = Clip.from(parsedName: parse(fileName: fileName)!, sourceFile: imageSequence)
-            if currentClip?.tryMerge(clip) != true {
-                if let currentClip = currentClip {
-                    animations.append(Animation(clip: currentClip))
-                }
-                currentClip = clip
+            let parsedName = parse(fileName: fileName)!
+            let clip = Clip.from(parsedName: parsedName, sourceFile: imageSequence)
+            if resourceName.isEmpty {
+                resourceName = String(parsedName.resourceName)
+            }
+            if clip.intro != nil {
+                introClip = clip
+            } else if clip.loop != nil {
+                loopClip = clip
+            } else {
+                outroClips.append(clip)
             }
             index = endIndexOfClip
         }
-        animations.append(Animation(clip: currentClip!))
+        if let loopClip = loopClip, introClip?.tryMerge(loopClip) != true {
+            fatalError("failed to merge intro and loop clip of \(resourceName)")
+        }
+        if outroClips.isEmpty {
+            guard let clip = introClip else {
+                fatalError("\(resourceName) has neither intro clip nor outro clip")
+            }
+            animations.append(Animation(clip: clip))
+        } else {
+            for var outroClip in outroClips {
+                if let clip = introClip, !outroClip.tryMerge(clip) {
+                    fatalError("failed to merge intro and outro clip of \(resourceName)")
+                }
+                animations.append(Animation(clip: outroClip))
+            }
+        }
         return animations
     }
     

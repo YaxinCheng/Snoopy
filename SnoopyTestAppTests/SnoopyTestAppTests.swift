@@ -8,72 +8,94 @@
 import Foundation
 import Testing
 
+private let BASE_URL = URL(string: "/path/to/")!
+
 struct SnoopyTestAppTests {
     private let imageSequencesOutline = [
-        URL(string: "/path/to/101_TM001_Hide_Outline_000000.heic")!,
-        URL(string: "/path/to/101_TM001_Hide_Outline_000001.heic")!,
-        URL(string: "/path/to/101_TM001_Hide_Outline_000002.heic")!,
-        URL(string: "/path/to/101_TM001_Hide_Outline_000003.heic")!,
-        URL(string: "/path/to/101_TM001_Hide_Outline_000004.heic")!,
-        URL(string: "/path/to/101_TM001_Hide_Outline_000005.heic")!,
+        BASE_URL.appending(path: "101_TM001_Hide_Outline_000000.heic"),
+        BASE_URL.appending(path: "101_TM001_Hide_Outline_000001.heic"),
+        BASE_URL.appending(path: "101_TM001_Hide_Outline_000002.heic"),
+        BASE_URL.appending(path: "101_TM001_Hide_Outline_000003.heic"),
+        BASE_URL.appending(path: "101_TM001_Hide_Outline_000004.heic"),
+        BASE_URL.appending(path: "101_TM001_Hide_Outline_000005.heic"),
     ]
 
     private let imageSequencesMask = [
-        URL(string: "/path/to/101_TM001_Hide_Mask_000000.heic")!,
-        URL(string: "/path/to/101_TM001_Hide_Mask_000001.heic")!,
-        URL(string: "/path/to/101_TM001_Hide_Mask_000002.heic")!,
-        URL(string: "/path/to/101_TM001_Hide_Mask_000003.heic")!,
+        BASE_URL.appending(path: "101_TM001_Hide_Mask_000000.heic"),
+        BASE_URL.appending(path: "101_TM001_Hide_Mask_000001.heic"),
+        BASE_URL.appending(path: "101_TM001_Hide_Mask_000002.heic"),
+        BASE_URL.appending(path: "101_TM001_Hide_Mask_000003.heic"),
     ]
     private let imageSequencesWithFrom = [
         // this is a hypothetical dataset. Resources doesn't contain these files
-        URL(string: "/path/to/101_BP004_From_BP002_000000.heic")!,
-        URL(string: "/path/to/101_BP004_From_BP002_000001.heic")!,
-        URL(string: "/path/to/101_BP004_From_BP002_000002.heic")!,
-        URL(string: "/path/to/101_BP004_From_BP002_000003.heic")!,
-        URL(string: "/path/to/101_BP004_From_BP002_000004.heic")!,
+        BASE_URL.appending(path: "101_BP004_From_BP002_000000.heic"),
+        BASE_URL.appending(path: "101_BP004_From_BP002_000001.heic"),
+        BASE_URL.appending(path: "101_BP004_From_BP002_000002.heic"),
+        BASE_URL.appending(path: "101_BP004_From_BP002_000003.heic"),
+        BASE_URL.appending(path: "101_BP004_From_BP002_000004.heic"),
     ]
     private let imageSequencesWithIntro = [
-        URL(string: "/path/to/102_SS001_Intro_000000.heic")!,
-        URL(string: "/path/to/102_SS001_Intro_000001.heic")!,
-        URL(string: "/path/to/102_SS001_Intro_000002.heic")!,
+        BASE_URL.appending(path: "102_SS001_Intro_000000.heic"),
+        BASE_URL.appending(path: "102_SS001_Intro_000001.heic"),
+        BASE_URL.appending(path: "102_SS001_Intro_000002.heic"),
     ]
     private let imageSequencesWithLoop = [
-        URL(string: "/path/to/102_SS001_Loop_000000.heic")!,
-        URL(string: "/path/to/102_SS001_Loop_000001.heic")!,
-        URL(string: "/path/to/102_SS001_Loop_000002.heic")!,
-        URL(string: "/path/to/102_SS001_Loop_000003.heic")!,
-        URL(string: "/path/to/102_SS001_Loop_000004.heic")!,
+        BASE_URL.appending(path: "102_SS001_Loop_000000.heic"),
+        BASE_URL.appending(path: "102_SS001_Loop_000001.heic"),
+        BASE_URL.appending(path: "102_SS001_Loop_000002.heic"),
+        BASE_URL.appending(path: "102_SS001_Loop_000003.heic"),
+        BASE_URL.appending(path: "102_SS001_Loop_000004.heic"),
     ]
     private let imageSequencesWithTo = [
-        URL(string: "/path/to/101_BP004_To_BP002_000000.heic")!,
-        URL(string: "/path/to/101_BP004_To_BP002_000001.heic")!,
-        URL(string: "/path/to/101_BP004_To_BP002_000002.heic")!,
-        URL(string: "/path/to/101_BP004_To_BP002_000003.heic")!,
-        URL(string: "/path/to/101_BP004_To_BP002_000004.heic")!,
+        BASE_URL.appending(path: "101_BP004_To_BP002_000000.heic"),
+        BASE_URL.appending(path: "101_BP004_To_BP002_000001.heic"),
+        BASE_URL.appending(path: "101_BP004_To_BP002_000002.heic"),
+        BASE_URL.appending(path: "101_BP004_To_BP002_000003.heic"),
+        BASE_URL.appending(path: "101_BP004_To_BP002_000004.heic"),
     ]
     private let imageSequencesWithOutro = [
-        URL(string: "/path/to/102_SS001_Outro_000000.heic")!,
-        URL(string: "/path/to/102_SS001_Outro_000001.heic")!,
-        URL(string: "/path/to/102_SS001_Outro_000002.heic")!,
-        URL(string: "/path/to/102_SS001_Outro_000003.heic")!,
+        BASE_URL.appending(path: "102_SS001_Outro_000000.heic"),
+        BASE_URL.appending(path: "102_SS001_Outro_000001.heic"),
+        BASE_URL.appending(path: "102_SS001_Outro_000002.heic"),
+        BASE_URL.appending(path: "102_SS001_Outro_000003.heic"),
     ]
     private let imageSequencesWithFromAndTo = [
         // this is a hypothetical dataset. Resources doesn't contain these files
-        URL(string: "/path/to/101_BP004_From_BP002_To_BP003_000000.heic")!,
-        URL(string: "/path/to/101_BP004_From_BP002_To_BP003_000001.heic")!,
-        URL(string: "/path/to/101_BP004_From_BP002_To_BP003_000002.heic")!,
-        URL(string: "/path/to/101_BP004_From_BP002_To_BP003_000003.heic")!,
-        URL(string: "/path/to/101_BP004_From_BP002_To_BP003_000004.heic")!,
+        BASE_URL.appending(path: "101_BP004_From_BP002_To_BP003_000000.heic"),
+        BASE_URL.appending(path: "101_BP004_From_BP002_To_BP003_000001.heic"),
+        BASE_URL.appending(path: "101_BP004_From_BP002_To_BP003_000002.heic"),
+        BASE_URL.appending(path: "101_BP004_From_BP002_To_BP003_000003.heic"),
+        BASE_URL.appending(path: "101_BP004_From_BP002_To_BP003_000004.heic"),
     ]
-    private let specialImages = [URL(string: "/path/to/101_IS12345.heic")!, URL(string: "/path/to/101_IS4321.heic")!]
 
-    private let videoWithIntroFrom = URL(string: "/path/to/104_AP031_Intro_From_BP004.mov")!
-    private let videoWithIntro = URL(string: "/path/to/101_004_Intro.mov")!
-    private let videoWithLoop = URL(string: "/path/to/104_AP031_Loop.mov")!
-    private let videoWithOutroTo = URL(string: "/path/to/104_AP031_Outro_To_BP001.mov")!
-    private let videoWithOutro = URL(string: "/path/to/101_004_Outro.mov")!
-    private let videoWithFromAndTo = URL(string: "/path/to/103_CM021_From_BP004_To_BP003.mov")!
-    private let videoFullFledge = URL(string: "/path/to/104_ST005.mov")!
+    private let imageSequenceWithMultipleTos = [
+        BASE_URL.appending(path: "101_BP001_000000.heic"),
+        BASE_URL.appending(path: "101_BP001_000001.heic"),
+        BASE_URL.appending(path: "101_BP001_000002.heic"),
+        BASE_URL.appending(path: "101_BP001_000003.heic"),
+        BASE_URL.appending(path: "101_BP001_000004.heic"),
+        BASE_URL.appending(path: "101_BP001_To_BP003_000000.heic"),
+        BASE_URL.appending(path: "101_BP001_To_BP003_000001.heic"),
+        BASE_URL.appending(path: "101_BP001_To_BP003_000002.heic"),
+        BASE_URL.appending(path: "101_BP001_To_BP003_000003.heic"),
+        BASE_URL.appending(path: "101_BP001_To_BP002_000000.heic"),
+        BASE_URL.appending(path: "101_BP001_To_BP002_000001.heic"),
+        BASE_URL.appending(path: "101_BP001_To_BP002_000002.heic"),
+        BASE_URL.appending(path: "101_BP001_To_BP002_000003.heic"),
+        BASE_URL.appending(path: "101_BP001_To_BP002_000004.heic"),
+    ]
+    private let specialImages = [
+        BASE_URL.appending(path: "101_IS12345.heic"),
+        BASE_URL.appending(path: "/101_IS4321.heic"),
+    ]
+
+    private let videoWithIntroFrom = BASE_URL.appending(path: "104_AP031_Intro_From_BP004.mov")
+    private let videoWithIntro = BASE_URL.appending(path: "101_004_Intro.mov")
+    private let videoWithLoop = BASE_URL.appending(path: "104_AP031_Loop.mov")
+    private let videoWithOutroTo = BASE_URL.appending(path: "104_AP031_Outro_To_BP001.mov")
+    private let videoWithOutro = BASE_URL.appending(path: "101_004_Outro.mov")
+    private let videoWithFromAndTo = BASE_URL.appending(path: "103_CM021_From_BP004_To_BP003.mov")
+    private let videoFullFledge = BASE_URL.appending(path: "104_ST005.mov")
 
     @Test func TestIgnoreOutline() async throws {
         // 101_TM001_Hide_Outline_
@@ -166,12 +188,12 @@ struct SnoopyTestAppTests {
             intro: ImageSequence(
                 template: "101_BP004_From_BP002_",
                 lastFile: UInt8(imageSequencesWithFrom.count - 1),
-                baseURL: URL(string: "/path/to/")!
+                baseURL: BASE_URL
             ),
             outro: ImageSequence(
                 template: "101_BP004_To_BP002_",
                 lastFile: UInt8(imageSequencesWithTo.count - 1),
-                baseURL: URL(string: "/path/to/")!
+                baseURL: BASE_URL
             )
         )))
     }
@@ -190,17 +212,17 @@ struct SnoopyTestAppTests {
                 intro: ImageSequence(
                     template: "102_SS001_Intro_",
                     lastFile: 2,
-                    baseURL: URL(string: "/path/to/")!
+                    baseURL: BASE_URL
                 ),
                 loop: ImageSequence(
                     template: "102_SS001_Loop_",
                     lastFile: 4,
-                    baseURL: URL(string: "/path/to/")!
+                    baseURL: BASE_URL
                 ),
                 outro: ImageSequence(
                     template: "102_SS001_Outro_",
                     lastFile: 3,
-                    baseURL: URL(string: "/path/to/")!
+                    baseURL: BASE_URL
                 )
             )))
     }
@@ -220,7 +242,7 @@ struct SnoopyTestAppTests {
                 intro: ImageSequence(
                     template: "101_BP004_From_BP002_To_BP003_",
                     lastFile: 4,
-                    baseURL: URL(string: "/path/to/")!
+                    baseURL: BASE_URL
                 )
             )
         ))
@@ -234,5 +256,29 @@ struct SnoopyTestAppTests {
         } == specialImages.sorted {
             $0.absoluteString < $1.absoluteString
         })
+    }
+
+    @Test func TestGroupImageSequencesWithMultipleTos() async throws {
+        let animationCollection = AnimationCollection.from(files: imageSequenceWithMultipleTos.shuffled())
+        #expect(animationCollection.specialImages.count == 0)
+        #expect(animationCollection.animations.count == 1)
+        #expect(animationCollection.animations.keys.first == "BP001")
+        #expect(animationCollection.animations["BP001"]!.count == 2)
+        #expect(animationCollection.animations["BP001"]?.element(to: "BP003") == .imageSequence(
+            Clip(
+                name: "BP001",
+                to: "BP003",
+                intro: ImageSequence(template: "101_BP001_", lastFile: 4, baseURL: BASE_URL),
+                outro: ImageSequence(template: "101_BP001_To_BP003_", lastFile: 3, baseURL: BASE_URL)
+            )
+        ))
+        #expect(animationCollection.animations["BP001"]?.element(to: "BP002") == .imageSequence(
+            Clip(
+                name: "BP001",
+                to: "BP002",
+                intro: ImageSequence(template: "101_BP001_", lastFile: 4, baseURL: BASE_URL),
+                outro: ImageSequence(template: "101_BP001_To_BP002_", lastFile: 4, baseURL: BASE_URL)
+            )
+        ))
     }
 }
