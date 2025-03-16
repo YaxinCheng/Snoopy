@@ -12,6 +12,8 @@ import SwiftUI
 
 private let LOOP_REPEAT_LIMIT: UInt = 3
 private let TIMER_INTERNVAL: TimeInterval = 0.06
+private let HOUSE_SCALE: CGFloat = 720 / 1080
+private let HOUSE_Y_OFFSET: CGFloat = 180 / 1080
 
 final class SnoopyViewModel: ObservableObject {
     private static let resourceFiles =
@@ -20,13 +22,23 @@ final class SnoopyViewModel: ObservableObject {
     @Published var currentAnimation: Animation?
     @Published var didFinishPlaying: Bool = false
 
+    private let backgroundColors: [NSColor] = [
+        .blue.withAlphaComponent(0.5),
+        .systemPink,
+        .yellow.withAlphaComponent(0.5),
+        .cyan,
+        .black,
+        .systemMint
+    ]
+    private var didSetupBackground = false
+    private var didSetupHouse = false
+
     private var videoNode: SKVideoNode? = nil {
         willSet {
             videoNode?.removeFromParent()
         }
     }
 
-    private var videos: [URL] = []
     private(set) var videoDidFinishPlaying: NotificationCenter.Publisher = NotificationCenter.default.publisher(for: Notification.Name(rawValue: ""))
 
     private var imageNode: SKSpriteNode? = nil {
@@ -38,7 +50,6 @@ final class SnoopyViewModel: ObservableObject {
     let imageSequenceTimer = Timer.publish(every: TIMER_INTERNVAL, on: .main, in: .common).autoconnect()
     private var imageSequenceIndex: Int = -1
     private var images: [URL] = []
-    private var timerObserver: AnyCancellable? = nil
 
     func setup(scene: SKScene) {
         if currentAnimation == nil {
@@ -46,7 +57,10 @@ final class SnoopyViewModel: ObservableObject {
         }
         videoNode = nil
         imageNode = nil
+        imageSequenceIndex = 0
         didFinishPlaying = false
+        setupBackground(scene: scene, colors: backgroundColors, background: animations.background)
+        setupSnoopyHouse(scene: scene, houses: animations.specialImages)
         switch currentAnimation {
         case .video(let clip):
             setupSceneFromVideoClip(scene: scene, clip: clip)
@@ -57,8 +71,36 @@ final class SnoopyViewModel: ObservableObject {
         }
     }
 
+    private func setupBackground(scene: SKScene, colors: [NSColor], background: URL?) {
+        if colors.isEmpty || didSetupBackground { return }
+        didSetupBackground = true
+
+        let colorNode = SKSpriteNode(color: colors.randomElement()!, size: scene.size)
+        colorNode.position = CGPoint(x: scene.size.width / 2, y: scene.size.height / 2)
+        colorNode.size = scene.size
+        scene.addChild(colorNode)
+
+        guard let background = background else { return }
+        let backgroundNode = SKSpriteNode(texture: .init(imageNamed: background.path()))
+        backgroundNode.position = CGPoint(x: scene.size.width / 2, y: scene.size.height / 2)
+        backgroundNode.size = scene.size
+        backgroundNode.blendMode = .alpha
+        scene.addChild(backgroundNode)
+    }
+
+    private func setupSnoopyHouse(scene: SKScene, houses: [URL]) {
+        if houses.isEmpty || didSetupHouse { return }
+        didSetupHouse = true
+        let randomHouse = houses.randomElement()!
+        let houseNode = SKSpriteNode()
+        houseNode.texture = SKTexture(imageNamed: randomHouse.path())
+        houseNode.size = CGSize(width: scene.size.width * HOUSE_SCALE, height: scene.size.height * HOUSE_SCALE)
+        houseNode.position = CGPoint(x: scene.size.width / 2, y: scene.size.height / 2 - HOUSE_Y_OFFSET)
+        scene.addChild(houseNode)
+    }
+
     private func setupSceneFromVideoClip(scene: SKScene, clip: Clip<URL>) {
-        videos = expandUrls(from: clip)
+        let videos = expandUrls(from: clip)
         let playItems = videos.map(AVPlayerItem.init(url:))
         videoNode = SKVideoNode(avPlayer: AVQueuePlayer(items: playItems))
         videoNode?.size = scene.size
@@ -75,12 +117,9 @@ final class SnoopyViewModel: ObservableObject {
         imageNode = SKSpriteNode()
         imageNode?.size = scene.size
         imageNode?.position = CGPoint(x: scene.size.width / 2, y: scene.size.height / 2)
-        imageSequenceIndex = 0
         imageNode?.texture = SKTexture(imageNamed: images[imageSequenceIndex].path())
         scene.addChild(imageNode!)
     }
-
-    func startAnimation() {}
 
     func videoFinishedPlaying() {
         didFinishPlaying = true
@@ -95,12 +134,6 @@ final class SnoopyViewModel: ObservableObject {
         }
     }
 
-    func stopAnimation() {
-        videoNode?.pause()
-        timerObserver?.cancel()
-        timerObserver = nil
-    }
-
     func moveToTheNextAnimation(scene: SKScene) {
         if let nextAnimationName = currentAnimation?.to {
             guard let nextAnimation = animations[nextAnimationName]?.randomAnimation() else {
@@ -110,7 +143,6 @@ final class SnoopyViewModel: ObservableObject {
         } else {
             currentAnimation = randomAnimation()
         }
-        imageSequenceIndex = 0
         setup(scene: scene)
     }
 

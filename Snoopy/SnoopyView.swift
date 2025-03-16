@@ -12,14 +12,13 @@ import SwiftUI
 
 struct SnoopyView: View {
     @StateObject private var viewModel = SnoopyViewModel()
-    private var scene = SKScene()
+    private let scene = SKScene()
 
     var body: some View {
         SpriteView(scene: scene)
             .onAppear {
                 if viewModel.currentAnimation == nil {
                     viewModel.setup(scene: scene)
-                    viewModel.startAnimation()
                 }
             }
             .onReceive(viewModel.imageSequenceTimer) { _ in
