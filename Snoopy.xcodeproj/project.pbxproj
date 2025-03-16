@@ -30,22 +30,19 @@
 				"Utils/Array+Extension.swift",
 				Utils/Log.swift,
 				"Utils/Optional+Extension.swift",
+				"Utils/SpriteKit+Extension.swift",
 			);
 			target = 1405D2DE2D5D9097003F3594 /* SnoopyTestAppTests */;
 		};
-		14B509772D73DF410076DFC7 /* Exceptions for "Snoopy" folder in "SnoopyTestApp" target */ = {
+		1489EE402D86B71C0003ED7B /* Exceptions for "SnoopyTestApp" folder in "SnoopyTestApp" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Animation.swift,
-				SnoopyView.swift,
-				SnoopyViewModel.swift,
-				"Utils/Array+Extension.swift",
-				Utils/Log.swift,
-				"Utils/Optional+Extension.swift",
+				Assets.xcassets,
+				"Preview Content/Preview Assets.xcassets",
 			);
 			target = 1405D2CE2D5D9096003F3594 /* SnoopyTestApp */;
 		};
-		14B5116F2D73DFC00076DFC7 /* Exceptions for "Resources" folder in "SnoopyTestApp" target */ = {
+		1489F6392D86B72C0003ED7B /* Exceptions for "Resources" folder in "SnoopyTestApp" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				000_Background.heic,
@@ -2091,11 +2088,27 @@
 			);
 			target = 1405D2CE2D5D9096003F3594 /* SnoopyTestApp */;
 		};
+		14B509772D73DF410076DFC7 /* Exceptions for "Snoopy" folder in "SnoopyTestApp" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Animation.swift,
+				SnoopyView.swift,
+				SnoopyViewModel.swift,
+				"Utils/Array+Extension.swift",
+				Utils/Log.swift,
+				"Utils/Optional+Extension.swift",
+				"Utils/SpriteKit+Extension.swift",
+			);
+			target = 1405D2CE2D5D9096003F3594 /* SnoopyTestApp */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		1405D2D02D5D9096003F3594 /* SnoopyTestApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				1489EE402D86B71C0003ED7B /* Exceptions for "SnoopyTestApp" folder in "SnoopyTestApp" target */,
+			);
 			path = SnoopyTestApp;
 			sourceTree = "<group>";
 		};
@@ -2116,7 +2129,7 @@
 		14FC7FA22D594B31004BDC22 /* Resources */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				14B5116F2D73DFC00076DFC7 /* Exceptions for "Resources" folder in "SnoopyTestApp" target */,
+				1489F6392D86B72C0003ED7B /* Exceptions for "Resources" folder in "SnoopyTestApp" target */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -2171,16 +2184,6 @@
 		};
 /* End PBXGroup section */
 
-/* Begin PBXHeadersBuildPhase section */
-		14FC7F832D59485C004BDC22 /* Headers */ = {
-			isa = PBXHeadersBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXHeadersBuildPhase section */
-
 /* Begin PBXNativeTarget section */
 		1405D2CE2D5D9096003F3594 /* SnoopyTestApp */ = {
 			isa = PBXNativeTarget;
@@ -2188,7 +2191,7 @@
 			buildPhases = (
 				1405D2CB2D5D9096003F3594 /* Sources */,
 				1405D2CC2D5D9096003F3594 /* Frameworks */,
-				1405D2CD2D5D9096003F3594 /* Resources */,
+				1489EE3F2D86B71C0003ED7B /* Resources */,
 			);
 			buildRules = (
 			);
@@ -2231,10 +2234,9 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 14FC7F912D59485C004BDC22 /* Build configuration list for PBXNativeTarget "Snoopy" */;
 			buildPhases = (
-				14FC7F832D59485C004BDC22 /* Headers */,
 				14FC7F842D59485C004BDC22 /* Sources */,
 				14FC7F852D59485C004BDC22 /* Frameworks */,
-				14FC7F862D59485C004BDC22 /* Resources */,
+				1489F6442D87DDDF0003ED7B /* Resources */,
 			);
 			buildRules = (
 			);
@@ -2296,13 +2298,6 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		1405D2CD2D5D9096003F3594 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		1405D2DD2D5D9097003F3594 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -2310,7 +2305,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		14FC7F862D59485C004BDC22 /* Resources */ = {
+		1489EE3F2D86B71C0003ED7B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1489F6442D87DDDF0003ED7B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (

@@ -11,8 +11,7 @@ import SwiftUI
 struct SnoopyTestAppApp: App {
     var body: some Scene {
         WindowGroup {
-//            SnoopyView()
-            Text("")
+            SnoopyView()
         }
     }
 }
