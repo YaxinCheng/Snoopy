@@ -5,15 +5,36 @@
 //  Created by Yaxin Cheng on 2025-02-09.
 //
 
+import AVKit
 import Foundation
-import ScreenSaver
+import SpriteKit
+import SwiftUI
 
-class SnoopyView: ScreenSaverView {
-    override init?(frame: NSRect, isPreview: Bool) {
-        super.init(frame: frame, isPreview: isPreview)
-    }
+struct SnoopyView: View {
+    @StateObject private var viewModel = SnoopyViewModel()
+    private let scene = SKScene()
 
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
+    var body: some View {
+        SpriteView(scene: scene)
+            .onAppear {
+                if viewModel.currentAnimation == nil {
+                    viewModel.setup(scene: scene)
+                }
+            }
+            .onReceive(viewModel.imageSequenceTimer) { _ in
+                viewModel.updateImageSequence()
+            }
+            .onReceive(viewModel.videoDidFinishPlaying) { _ in
+                viewModel.videoFinishedPlaying()
+            }
+            .onChange(of: viewModel.didFinishPlaying) {
+                if viewModel.didFinishPlaying {
+                    viewModel.moveToTheNextAnimation(scene: scene)
+                }
+            }
     }
+}
+
+#Preview {
+    SnoopyView()
 }
