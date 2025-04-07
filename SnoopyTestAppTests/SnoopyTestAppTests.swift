@@ -18,6 +18,12 @@ struct SnoopyTestAppTests {
         BASE_URL.appending(path: "101_TM001_Hide_Outline_000003.heic"),
         BASE_URL.appending(path: "101_TM001_Hide_Outline_000004.heic"),
         BASE_URL.appending(path: "101_TM001_Hide_Outline_000005.heic"),
+        BASE_URL.appending(path: "101_TM001_Reveal_Outline_000000.heic"),
+        BASE_URL.appending(path: "101_TM001_Reveal_Outline_000001.heic"),
+        BASE_URL.appending(path: "101_TM001_Reveal_Outline_000002.heic"),
+        BASE_URL.appending(path: "101_TM001_Reveal_Outline_000003.heic"),
+        BASE_URL.appending(path: "101_TM001_Reveal_Outline_000004.heic"),
+        BASE_URL.appending(path: "101_TM001_Reveal_Outline_000005.heic"),
     ]
 
     private let imageSequencesMask = [
@@ -25,6 +31,10 @@ struct SnoopyTestAppTests {
         BASE_URL.appending(path: "101_TM001_Hide_Mask_000001.heic"),
         BASE_URL.appending(path: "101_TM001_Hide_Mask_000002.heic"),
         BASE_URL.appending(path: "101_TM001_Hide_Mask_000003.heic"),
+        BASE_URL.appending(path: "101_TM001_Reveal_Mask_000000.heic"),
+        BASE_URL.appending(path: "101_TM001_Reveal_Mask_000001.heic"),
+        BASE_URL.appending(path: "101_TM001_Reveal_Mask_000002.heic"),
+        BASE_URL.appending(path: "101_TM001_Reveal_Mask_000003.heic"),
     ]
     private let imageSequencesWithFrom = [
         // this is a hypothetical dataset. Resources doesn't contain these files
@@ -86,7 +96,7 @@ struct SnoopyTestAppTests {
     ]
     private let specialImages = [
         BASE_URL.appending(path: "101_IS12345.heic"),
-        BASE_URL.appending(path: "/101_IS4321.heic"),
+        BASE_URL.appending(path: "101_IS4321.heic"),
     ]
 
     private let videoWithIntroFrom = BASE_URL.appending(path: "104_AP031_Intro_From_BP004.mov")
@@ -96,19 +106,40 @@ struct SnoopyTestAppTests {
     private let videoWithOutro = BASE_URL.appending(path: "101_004_Outro.mov")
     private let videoWithFromAndTo = BASE_URL.appending(path: "103_CM021_From_BP004_To_BP003.mov")
     private let videoFullFledge = BASE_URL.appending(path: "104_ST005.mov")
+    private let videoWithDreamContent = BASE_URL.appending(path: "101_AS005.mov")
 
-    @Test func TestIgnoreOutline() async throws {
+    @Test func TestMaskOutline() async throws {
         // 101_TM001_Hide_Outline_
-        let animationCollection = AnimationCollection.from(files: imageSequencesOutline)
+        let animationCollection = AnimationCollection.from(files: imageSequencesOutline + imageSequencesMask)
         #expect(animationCollection.animations.isEmpty)
         #expect(animationCollection.specialImages.isEmpty)
-    }
-
-    @Test func TestIgnoreMask() async throws {
-        // 101_TM001_Hide_Mask_
-        let animationCollection = AnimationCollection.from(files: imageSequencesMask)
-        #expect(animationCollection.animations.isEmpty)
-        #expect(animationCollection.specialImages.isEmpty)
+        #expect(animationCollection.masks.count == 1)
+        #expect(animationCollection.masks.first?.animations.sorted { $0.debugDescription < $1.debugDescription }
+            == [.imageSequence(Clip(
+                name: "TM001",
+                intro: ImageSequence(
+                    prefix: "101_TM001_Hide_Mask_",
+                    lastFile: 3,
+                    baseURL: BASE_URL
+                ),
+                outro: ImageSequence(
+                    prefix: "101_TM001_Reveal_Mask_",
+                    lastFile: 3,
+                    baseURL: BASE_URL
+                )
+            )), .imageSequence(Clip(
+                name: "TM001",
+                intro: ImageSequence(
+                    prefix: "101_TM001_Hide_Outline_",
+                    lastFile: 5,
+                    baseURL: BASE_URL
+                ),
+                outro: ImageSequence(
+                    prefix: "101_TM001_Reveal_Outline_",
+                    lastFile: 5,
+                    baseURL: BASE_URL
+                )
+            ))])
     }
 
     @Test func TestVideoGroupIntroFromLoopOutroTo() async throws {
@@ -175,12 +206,12 @@ struct SnoopyTestAppTests {
         #expect(animationCollection.animations.keys.first == .imageSequence(Clip(
             name: "BP004",
             intro: ImageSequence(
-                template: "101_BP004_From_BP002_",
+                prefix: "101_BP004_From_BP002_",
                 lastFile: UInt8(imageSequencesWithFrom.count - 1),
                 baseURL: BASE_URL
             ),
             outro: ImageSequence(
-                template: "101_BP004_To_BP002_",
+                prefix: "101_BP004_To_BP002_",
                 lastFile: UInt8(imageSequencesWithTo.count - 1),
                 baseURL: BASE_URL
             )
@@ -198,17 +229,17 @@ struct SnoopyTestAppTests {
             Clip(
                 name: "SS001",
                 intro: ImageSequence(
-                    template: "102_SS001_Intro_",
+                    prefix: "102_SS001_Intro_",
                     lastFile: 2,
                     baseURL: BASE_URL
                 ),
                 loop: ImageSequence(
-                    template: "102_SS001_Loop_",
+                    prefix: "102_SS001_Loop_",
                     lastFile: 4,
                     baseURL: BASE_URL
                 ),
                 outro: ImageSequence(
-                    template: "102_SS001_Outro_",
+                    prefix: "102_SS001_Outro_",
                     lastFile: 3,
                     baseURL: BASE_URL
                 )
@@ -225,7 +256,7 @@ struct SnoopyTestAppTests {
             Clip(
                 name: "BP004",
                 intro: ImageSequence(
-                    template: "101_BP004_From_BP002_To_BP003_",
+                    prefix: "101_BP004_From_BP002_To_BP003_",
                     lastFile: 4,
                     baseURL: BASE_URL
                 )
@@ -247,22 +278,38 @@ struct SnoopyTestAppTests {
         let animationCollection = AnimationCollection.from(files: imageSequenceWithMultipleTos.shuffled())
         #expect(animationCollection.specialImages.count == 0)
         let animations = animationCollection.animations.sorted {
-            $0.key.name < $1.key.name || ($0.key.urls.first?.path() ?? "") < ($1.key.urls.first?.path() ?? "")
+            $0.key.name < $1.key.name || ($0.key.urls.last?.path() ?? "") < ($1.key.urls.last?.path() ?? "")
         }
-        #expect(animations.count == 2)
+        #expect(animations.count == 3)
         #expect(animations[0].key == .imageSequence(
             Clip(
                 name: "BP001",
-                intro: ImageSequence(template: "101_BP001_", lastFile: 4, baseURL: BASE_URL),
-                outro: ImageSequence(template: "101_BP001_To_BP002_", lastFile: 4, baseURL: BASE_URL)
+                intro: ImageSequence(prefix: "101_BP001_", lastFile: 4, baseURL: BASE_URL),
             )
         ))
         #expect(animations[1].key == .imageSequence(
             Clip(
                 name: "BP001",
-                intro: ImageSequence(template: "101_BP001_", lastFile: 4, baseURL: BASE_URL),
-                outro: ImageSequence(template: "101_BP001_To_BP003_", lastFile: 3, baseURL: BASE_URL)
+                intro: ImageSequence(prefix: "101_BP001_", lastFile: 4, baseURL: BASE_URL),
+                outro: ImageSequence(prefix: "101_BP001_To_BP002_", lastFile: 4, baseURL: BASE_URL)
             )
         ))
+        #expect(animations[2].key == .imageSequence(
+            Clip(
+                name: "BP001",
+                intro: ImageSequence(prefix: "101_BP001_", lastFile: 4, baseURL: BASE_URL),
+                outro: ImageSequence(prefix: "101_BP001_To_BP003_", lastFile: 3, baseURL: BASE_URL)
+            )
+        ))
+    }
+    
+    @Test func TestDreamContent() async throws {
+        let animationCollection = AnimationCollection.from(files: [videoWithDreamContent])
+        #expect(animationCollection.dreams == [
+            .video(Clip(
+                name: "AS005",
+                intro: videoWithDreamContent
+            ))
+        ])
     }
 }

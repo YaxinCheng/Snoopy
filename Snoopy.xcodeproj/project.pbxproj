@@ -27,6 +27,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Animation.swift,
+				ParsedFileName.swift,
 				"Utils/Array+Extension.swift",
 				Utils/Log.swift,
 				"Utils/Optional+Extension.swift",
@@ -2092,6 +2093,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Animation.swift,
+				ParsedFileName.swift,
 				SnoopyView.swift,
 				SnoopyViewModel.swift,
 				"Utils/Array+Extension.swift",
