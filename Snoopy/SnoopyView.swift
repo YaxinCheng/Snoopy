@@ -24,6 +24,9 @@ struct SnoopyView: View {
             .onReceive(viewModel.imageSequenceTimer) { _ in
                 viewModel.updateImageSequence()
             }
+            .onReceive(viewModel.maskTimer) { _ in
+                viewModel.updateMask()
+            }
             .onReceive(viewModel.videoDidFinishPlaying) { _ in
                 viewModel.videoFinishedPlaying()
             }

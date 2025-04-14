@@ -7,6 +7,15 @@
 
 import Foundation
 
+// VI, WE: sun / moon / other weather for snoopy on the roof
+// AS: dream content
+// ST hide: hide dreams and enter sleepy snoopy on roof mode
+// ST reveal: sleepy snoopy starts dreaming
+// TM: dream masks
+// IS: Snoopy houses
+//
+// Exception: A B suffix found for 103_ST003_Hide_A.mov 103_ST003_Hide_B.mov
+//
 // Hide -> Hide dream and show sleepy snoopy -> Intro
 // Reveal -> Show dream and hide sleepy snoopy -> Outro
 struct ParsedFileName {
@@ -39,8 +48,8 @@ struct ParsedFileName {
                 parsed.variation = component
             }
             // one name can only be either intro, outro, or loop, or none.
-            parsed.isIntro = parsed.isIntro || component == "Intro" || component == "From" || component == "Hide"
-            parsed.isOutro = !parsed.isIntro && (parsed.isOutro || component == "Outro" || component == "To" || component == "Reveal")
+            parsed.isIntro = parsed.isIntro || component == "Intro" || component == "From" || component == "Reveal"
+            parsed.isOutro = !parsed.isIntro && (parsed.isOutro || component == "Outro" || component == "To" || component == "Hide")
             parsed.isLoop = !parsed.isIntro && !parsed.isOutro && (parsed.isLoop || component == "Loop")
             parsed.isHideOrReveal = parsed.isHideOrReveal || component == "Hide" || component == "Reveal"
             parsed.isMask = parsed.isMask || component == "Mask"
@@ -75,5 +84,21 @@ struct ParsedFileName {
         let lastUnderscore = fileName.lastIndex(of: "_")
         assert(lastUnderscore != nil, "found file name with no underscore: \(fileName)")
         return fileName[...lastUnderscore!]
+    }
+
+    static func isSnoopyHouse<S: StringProtocol>(_ resourceName: S) -> Bool {
+        resourceName.starts(with: "IS")
+    }
+
+    static func isBackground<S: StringProtocol>(_ resourceName: S) -> Bool {
+        resourceName == "Background"
+    }
+
+    static func isDream<S: StringProtocol>(_ resourceName: S) -> Bool {
+        resourceName.starts(with: "AS")
+    }
+
+    static func isMask<S: StringProtocol>(_ resourceName: S) -> Bool {
+        resourceName.starts(with: "TM")
     }
 }

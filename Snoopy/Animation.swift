@@ -5,16 +5,6 @@
 //  Created by Yaxin Cheng on 2025-02-09.
 //
 
-// VI, WE: sun / moon / other weather for snoopy on the roof
-// AS: dream content
-// ST hide: hide dreams and enter sleepy snoopy on roof mode
-// ST reveal: sleepy snoopy starts dreaming
-// TM: dream masks
-// IS: Snoopy houses
-//
-// Exception: A B suffix found for 103_ST003_Hide_A.mov 103_ST003_Hide_B.mov
-//
-
 import Foundation
 
 // Ignore these two types of files as I don't know how to handle them yet.
@@ -22,9 +12,6 @@ private let IGNORED_KEYWORDS: Set<String> = []
 private let HEIC_FILE_TYPE: String = "heic"
 private let MOV_FILE_TYPE: String = "mov"
 private let DESIGNATION_KEYWORD: String = "_To_"
-private let MASK_KEYWORD: String = "TM"
-private let HOUSE_KEYWORD: String = "IS"
-private let DREAM_KEYWORD: String = "AS"
 
 enum Animation: Equatable, Hashable {
     case video(Clip<URL>)
@@ -66,6 +53,22 @@ enum Animation: Equatable, Hashable {
             clip.name
         }
     }
+    
+    var kind: ClipKind {
+        switch self {
+        case .video(let clip):
+            clip.kind
+        case .imageSequence(let clip):
+            clip.kind
+        }
+    }
+    
+    func unwrapToImageSequence() -> Clip<ImageSequence> {
+        switch self {
+        case .imageSequence(let clip): clip
+        case .video: fatalError("trying to unwrap a video clip to an image sequence clip")
+        }
+    }
 }
 
 // For debugging purposes only.
@@ -81,13 +84,19 @@ extension Animation: CustomDebugStringConvertible {
 }
 
 struct Mask {
-    private(set) var animations: [Animation] = []
+    private var _animations: [Clip<ImageSequence>?] = [nil, nil]
     
     mutating func add(animation: Animation) {
-        if animations.isEmpty {
-            animations.reserveCapacity(2)
-        }
-        animations.append(animation)
+        let clip = animation.unwrapToImageSequence()
+        _animations[clip.kind.rawValue] = clip
+    }
+    
+    var mask: Clip<ImageSequence> {
+        _animations[ClipKind.mask.rawValue]!
+    }
+    
+    var outline: Clip<ImageSequence> {
+        _animations[ClipKind.outline.rawValue]!
     }
 }
 
@@ -96,14 +105,14 @@ struct Mask {
 struct AnimationCollection {
     typealias JumpGraph = [Animation: [Animation]]
     
-    let animations: JumpGraph // key: Animation, value: animations can be jumpped from the current animation
+    let jumpGraph: JumpGraph // key: Animation, value: animations can be jumpped from the current animation
     let masks: [Mask]
     let dreams: [Animation]
     let specialImages: [URL] // images that will be used as decorations
     let background: URL?
     
     private init(graph: JumpGraph, dreams: [Animation], masks: [Mask], specialImages: [URL], background: URL?) {
-        self.animations = graph
+        self.jumpGraph = graph
         self.dreams = dreams
         self.masks = masks
         self.specialImages = specialImages
@@ -125,9 +134,9 @@ struct AnimationCollection {
             let fileName = fileURL.deletingPathExtension().lastPathComponent
             let resourceName = ParsedFileName.extractResourceName(from: fileName)
             switch fileExtension {
-            case HEIC_FILE_TYPE where isSnoopyHouse(resourceName):
+            case HEIC_FILE_TYPE where ParsedFileName.isSnoopyHouse(resourceName):
                 specialImages.append(fileURL)
-            case HEIC_FILE_TYPE where isBackground(resourceName):
+            case HEIC_FILE_TYPE where ParsedFileName.isBackground(resourceName):
                 background = fileURL
             case HEIC_FILE_TYPE, MOV_FILE_TYPE:
                 let endOfAnimationIndex = files[index...].findFirstUnmatch {
@@ -141,10 +150,13 @@ struct AnimationCollection {
                 default:
                     fatalError("Unreachable: unexpected file type \(fileExtension)")
                 }
-                if isMask(resourceName) {
-                    animationContexts.lazy.map { $0.animation }
-                        .forEach { append(animation: $0, to: &masks) }
-                } else if isDream(resourceName) {
+                if ParsedFileName.isMask(resourceName) {
+                    for animation in animationContexts.lazy.map(\.animation) {
+                        masks.setDefault(Mask(), forKey: animation.name) {
+                            $0.add(animation: animation)
+                        }
+                    }
+                } else if ParsedFileName.isDream(resourceName) {
                     dreams.append(contentsOf: animationContexts.map(\.animation))
                 } else {
                     allContexts.append(contentsOf: animationContexts)
@@ -159,22 +171,6 @@ struct AnimationCollection {
                                    masks: Array(masks.values),
                                    specialImages: specialImages,
                                    background: background)
-    }
-    
-    private static func isSnoopyHouse<S: StringProtocol>(_ resourceName: S) -> Bool {
-        resourceName.starts(with: HOUSE_KEYWORD)
-    }
-    
-    private static func isBackground<S: StringProtocol>(_ resourceName: S) -> Bool {
-        resourceName == "Background"
-    }
-    
-    private static func isDream<S: StringProtocol>(_ resourceName: S) -> Bool {
-        resourceName.starts(with: DREAM_KEYWORD)
-    }
-    
-    private static func isMask<S: StringProtocol>(_ resourceName: S) -> Bool {
-        resourceName.starts(with: MASK_KEYWORD)
     }
     
     typealias AnimationContext = (animation: Animation, source: Substring?, destination: Substring?)
@@ -205,7 +201,7 @@ struct AnimationCollection {
     }
     
     private static func constructImageSequenceAnimation(from files: ArraySlice<URL>, resourceName: some StringProtocol) -> [AnimationContext] {
-        var introClips: [Clip<ImageSequence>.Kind: (clip: Clip<ImageSequence>, source: Substring?, destination: Substring?, isTransitional: Bool)] = [:]
+        var introClips: [ClipKind: (clip: Clip<ImageSequence>, source: Substring?, destination: Substring?, isTransitional: Bool)] = [:]
         var outroClips: [(clip: Clip<ImageSequence>, destination: Substring?)] = []
         var animations = [AnimationContext]()
         var index = files.startIndex
@@ -256,13 +252,6 @@ struct AnimationCollection {
         return animations
     }
     
-    private static func append(animation: Animation, to masks: inout [String: Mask]) {
-        if masks[animation.name] == nil {
-            masks[animation.name] = Mask()
-        }
-        masks[animation.name]!.add(animation: animation)
-    }
-    
     private static func createJumpGraph(context: [AnimationContext]) -> JumpGraph {
         var nameToAnimations = [String: [Animation]]()
         for c in context {
@@ -292,36 +281,18 @@ struct AnimationCollection {
     }
 }
 
-extension AnimationCollection: Collection {
-    typealias Index = JumpGraph.Index
-    typealias Element = JumpGraph.Element
+enum ClipKind: Int {
+    case normal = -1
+    case mask = 0
+    case outline = 1
     
-    subscript(index: JumpGraph.Index) -> JumpGraph.Element {
-        animations[index]
-    }
-    
-    subscript(key: JumpGraph.Key) -> JumpGraph.Value? {
-        animations[key]
-    }
-    
-    func index(after i: JumpGraph.Index) -> JumpGraph.Index {
-        animations.index(after: i)
-    }
-    
-    var startIndex: JumpGraph.Index {
-        animations.startIndex
-    }
-    
-    var endIndex: JumpGraph.Index {
-        animations.endIndex
-    }
-    
-    var keys: JumpGraph.Keys {
-        animations.keys
-    }
-    
-    var values: JumpGraph.Values {
-        animations.values
+    init(isMask: Bool, isOutline: Bool) {
+        switch (isMask, isOutline) {
+        case (false, false): self = .normal
+        case (false, true): self = .outline
+        case (true, false): self = .mask
+        case (true, true): fatalError("Unexpected file name with both Mask and Outline keywords")
+        }
     }
 }
 
@@ -345,29 +316,13 @@ extension AnimationCollection: Collection {
 struct Clip<MediaType> {
     let name: String
     let variation: String?
-    
-    enum Kind {
-        case normal
-        case mask
-        case outline
-        
-        init(isMask: Bool, isOutline: Bool) {
-            switch (isMask, isOutline) {
-            case (false, false): self = .normal
-            case (false, true): self = .outline
-            case (true, false): self = .mask
-            case (true, true): fatalError("Unexpected file name with both Mask and Outline keywords")
-            }
-        }
-    }
-
-    let kind: Kind
+    let kind: ClipKind
 
     private(set) var intro: MediaType?
     private(set) var loop: MediaType?
     private(set) var outro: MediaType?
     
-    init(name: String, variation: String? = nil, kind: Kind = .normal, intro: MediaType? = nil, loop: MediaType? = nil, outro: MediaType? = nil) {
+    init(name: String, variation: String? = nil, kind: ClipKind = .normal, intro: MediaType? = nil, loop: MediaType? = nil, outro: MediaType? = nil) {
         self.name = name
         self.variation = variation
         self.kind = kind
@@ -380,7 +335,7 @@ struct Clip<MediaType> {
         var clip = Clip(
             name: String(parsedName.resourceName),
             variation: parsedName.variation.map(String.init),
-            kind: Kind(isMask: parsedName.isMask, isOutline: parsedName.isOutline)
+            kind: ClipKind(isMask: parsedName.isMask, isOutline: parsedName.isOutline)
         )
         if parsedName.isLoop {
             clip.loop = sourceFile
@@ -446,6 +401,7 @@ struct ImageSequence: Equatable, Hashable {
     /// urls returns
     var urls: [URL] {
         (0 ... lastFile)
+            .lazy
             .map { self.fileNameWithExtension(at: $0) }
             .map { self.baseURL.appendingPathComponent($0) }
     }
