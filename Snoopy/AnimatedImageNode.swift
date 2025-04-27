@@ -8,9 +8,15 @@
 import Combine
 import SpriteKit
 
-class AnimatedImageNode: SKSpriteNode {
-    private var resources: [URL]
+final class AnimatedImageNode: SKSpriteNode {
+    private var resources: [URL] = []
     private var currentIndex: Int = 0
+    
+    static let clear = AnimatedImageNode()
+    
+    private init() {
+        super.init(texture: nil, color: .clear, size: .zero)
+    }
 
     init(contentsOf resources: [URL]) {
         assert(!resources.isEmpty, "Empty resources for AnimatedImageNode is not allowed")
@@ -20,12 +26,21 @@ class AnimatedImageNode: SKSpriteNode {
         super.init(texture: initialTexture, color: .clear, size: initialSize ?? .zero)
     }
     
+    @discardableResult
     func fullscreen(in scene: SKScene) -> Self {
-        self.size = scene.size
-        self.center(in: scene)
+        size = scene.size
+        center(in: scene)
         return self
     }
     
+    func reset(contentsOf resources: [URL]) -> Self {
+        self.resources = resources
+        currentIndex = 0
+        return self
+    }
+    
+    /// update the AnimatedImageNode to the next image,
+    /// and return true for finished, false for still have more.
     @MainActor
     @discardableResult
     func update() -> Bool {

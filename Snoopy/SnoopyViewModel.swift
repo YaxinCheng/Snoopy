@@ -16,26 +16,30 @@ private let MASK_INTERVAL: TimeInterval = 0.03
 private let HOUSE_SCALE: CGFloat = 720 / 1080
 private let HOUSE_Y_OFFSET: CGFloat = 180 / 1080
 
+// TODO: Weather information.
 final class SnoopyViewModel: ObservableObject {
     private static let resourceFiles =
         Bundle(for: SnoopyViewModel.self).urls(forResourcesWithExtension: nil, subdirectory: nil) ?? []
     private let animations = AnimationCollection.from(files: resourceFiles)
     @Published var currentAnimation: Animation? {
         willSet {
-            print("\(currentAnimation?.name ?? "nil"), \(newValue?.name ?? "nil")")
             let needsMask = currentAnimation == nil || (newValue.map(\.name).map(ParsedFileName.isDream) ?? false)
             if needsMask {
                 currentMask = animations.masks.randomElement()
+                currentTransition = animations.dreamTransitions.randomElement()?.unwrapToVideo()
             } else {
                 currentMask = nil
+                currentTransition = nil
             }
-            firstAnimation = currentAnimation == nil
+//            firstAnimation = currentAnimation == nil
         }
     }
 
-    @Published var didFinishPlaying: Bool = false
-    private var firstAnimation = true
     private var currentMask: Mask?
+    private var currentTransition: Clip<URL>?
+
+    @Published var didFinishPlaying: Bool = false
+    private var firstAnimation = false
 
     private let backgroundColors: [NSColor] = [
         .systemGreen,
@@ -61,14 +65,18 @@ final class SnoopyViewModel: ObservableObject {
         }
     }
 
-    private var outlineNode: AnimatedImageNode? = nil {
+    private var outlineNode: AnimatedImageNode = .clear {
         willSet {
-            outlineNode?.removeFromParent()
+            outlineNode.removeFromParent()
         }
     }
 
     private(set) var videoDidFinishPlaying = NotificationCenter.default.publisher(for: Notification.Name(rawValue: ""))
-    private var observeAVPlayerStatus: Any?
+    private lazy var keyValueObservers: [Any?] = {
+        var observers = [Any?]()
+        observers.reserveCapacity(2)
+        return observers
+    }()
 
     private var imageNode: AnimatedImageNode? = nil {
         willSet {
@@ -95,7 +103,10 @@ final class SnoopyViewModel: ObservableObject {
     }
 
     private func reset() {
-        outlineNode = nil
+        cropNode.maskNode = nil
+        cropNode.removeAllChildren()
+        cropNode.removeFromParent()
+        outlineNode = .clear
         imageNode = nil
         didFinishPlaying = false
     }
@@ -129,48 +140,49 @@ final class SnoopyViewModel: ObservableObject {
 
     private func setupSceneFromVideoClip(scene: SKScene, clip: Clip<URL>) {
         let videos = expandUrls(from: clip)
+        let introTransition = firstAnimation ? [] : OptionalToArray(currentTransition?.intro).map(AVPlayerItem.init(url:))
         let playItems = videos.map(AVPlayerItem.init(url:))
-        let player = AVQueuePlayer(items: playItems)
-        // TODO: this is for testing only. Remove it
-        player.seek(to: CMTimeMakeWithSeconds(28, preferredTimescale: 600))
+        let outroTransition = OptionalToArray(currentTransition?.outro).map(AVPlayerItem.init(url:))
+        let totalPlayItems = introTransition + playItems + outroTransition
+        let player = AVQueuePlayer(items: totalPlayItems)
         let videoNode = SKVideoNode(avPlayer: player)
         videoNode.size = scene.size
         videoNode.center(in: scene)
-        cropNode = SKCropNode()
-        if let resources = currentMask?.mask.intro, !firstAnimation {
-            cropNode.maskNode = AnimatedImageNode(contentsOf: resources.urls).fullscreen(in: scene)
-        }
-        if let resources = currentMask?.outline.intro, !firstAnimation {
-            outlineNode = AnimatedImageNode(contentsOf: resources.urls).fullscreen(in: scene)
-        }
         cropNode.addChild(videoNode)
-        if let outlineNode = outlineNode {
-            scene.addChild(outlineNode)
-        }
+        outlineNode = .clear
+        scene.addChild(outlineNode)
         scene.addChild(cropNode)
         videoNode.play()
-        if currentMask != nil {
-            observeAVPlayerStatus = playItems.last?.observe(\.status, options: [.new, .initial]) { [weak self] observedItem, _ in
-                guard observedItem.status == .readyToPlay, let mask = self?.currentMask else { return }
-                let outroTime = (Double(mask.mask.outro?.urls.count ?? 0) + 2) * MASK_INTERVAL
-                let outroMaskTimeDuration = CMTimeSubtract(observedItem.duration, CMTimeMakeWithSeconds(outroTime, preferredTimescale: 600))
-                player.addBoundaryTimeObserver(forTimes: [NSValue(time: outroMaskTimeDuration)], queue: .global()) { [weak self] in
-                    DispatchQueue.main.async {
-                        if let resources = mask.mask.outro?.urls {
-                            self?.cropNode.maskNode = AnimatedImageNode(contentsOf: resources).fullscreen(in: scene)
-                        }
-                        if let resources = mask.outline.outro?.urls {
-                            self?.outlineNode = AnimatedImageNode(contentsOf: resources).fullscreen(in: scene)
-                        }
-                    }
-                }
-            }
+        if let mask = currentMask {
+            keyValueObservers.append(introTransition.last?.waitForItemReady { [weak self] _ in
+                let transitionTime = introTransition.map(\.duration).reduce(CMTime.zero, CMTimeAdd)
+                self?.setupMask(scene: scene, player: player, atTime: transitionTime, mask: mask.mask.intro!, outline: mask.outline.intro!)
+            })
+            keyValueObservers.append(playItems.last?.waitForItemReady { [weak self] item in
+                let maskTime = CMTimeMakeWithSeconds(Double(mask.mask.outro?.urls.count ?? 0) * 1.5 * MASK_INTERVAL, preferredTimescale: 600)
+                self?.setupMask(scene: scene, player: player, atTime: CMTimeSubtract(item.duration, maskTime), mask: mask.mask.outro!, outline: mask.outline.outro!)
+            })
         } else {
-            observeAVPlayerStatus = nil
+            keyValueObservers.removeAll(keepingCapacity: true)
         }
         videoDidFinishPlaying = NotificationCenter
             .default
-            .publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: playItems.last)
+            .publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: totalPlayItems.last)
+    }
+
+    private func setupMask(scene: SKScene, player: AVPlayer, atTime insertTime: CMTime, mask: ImageSequence, outline: ImageSequence) {
+        // observer needs to be removed after triggering,
+        // or it will trigger the block multiple times.
+        var observer: Any?
+        observer = player.addBoundaryTimeObserver(forTimes: [NSValue(time: insertTime)], queue: .global()) {
+            if let observer = observer {
+                player.removeTimeObserver(observer)
+            }
+            DispatchQueue.main.async { [weak self] in
+                self?.cropNode.maskNode = AnimatedImageNode(contentsOf: mask.urls).fullscreen(in: scene)
+                self?.outlineNode.reset(contentsOf: outline.urls).fullscreen(in: scene)
+            }
+        }
     }
 
     private func setUpSceneFromImageSequenceClip(scene: SKScene, clip: Clip<ImageSequence>) {
@@ -182,7 +194,7 @@ final class SnoopyViewModel: ObservableObject {
 
     @MainActor
     func videoFinishedPlaying() {
-        didFinishPlaying = (cropNode.maskNode as? AnimatedImageNode)?.isFinished ?? true
+        didFinishPlaying = true
     }
 
     @MainActor
@@ -194,16 +206,27 @@ final class SnoopyViewModel: ObservableObject {
 
     @MainActor
     func updateMask() {
-        if let maskNode = cropNode.maskNode as? AnimatedImageNode, let outlineNode = outlineNode {
-            didFinishPlaying = maskNode.update() && outlineNode.update()
+        if let maskNode = cropNode.maskNode as? AnimatedImageNode {
+            let maskFinished = maskNode.update()
+            let outlineFinished = outlineNode.update()
+            if maskFinished && outlineFinished {
+                cropNode.maskNode = nil
+                outlineNode = .clear
+            }
         }
     }
 
     func moveToTheNextAnimation(scene: SKScene) {
+        // TODO: start dreaming from sleepy snoopy mode
         if let currentAnimation = currentAnimation,
            let nextAnimation = animations.jumpGraph[currentAnimation]?.randomElement()
         {
             self.currentAnimation = nextAnimation
+        } else if let currentAnimation = currentAnimation,
+                  ParsedFileName.isDream(currentAnimation.name)
+        {
+            // dream finished playing.
+            self.currentAnimation = animations.rph.randomElement()
         } else {
             currentAnimation = randomAnimation()
         }

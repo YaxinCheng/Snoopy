@@ -7,8 +7,6 @@
 
 import Foundation
 
-// Ignore these two types of files as I don't know how to handle them yet.
-private let IGNORED_KEYWORDS: Set<String> = []
 private let HEIC_FILE_TYPE: String = "heic"
 private let MOV_FILE_TYPE: String = "mov"
 private let DESIGNATION_KEYWORD: String = "_To_"
@@ -69,6 +67,13 @@ enum Animation: Equatable, Hashable {
         case .video: fatalError("trying to unwrap a video clip to an image sequence clip")
         }
     }
+    
+    func unwrapToVideo() -> Clip<URL> {
+        switch self {
+        case .video(let clip): clip
+        case .imageSequence: fatalError("trying to unwrap an image sequence clip to a video clip")
+        }
+    }
 }
 
 // For debugging purposes only.
@@ -108,24 +113,32 @@ struct AnimationCollection {
     let jumpGraph: JumpGraph // key: Animation, value: animations can be jumpped from the current animation
     let masks: [Mask]
     let dreams: [Animation]
+    let dreamTransitions: [Animation]
+    /// rph for lack of better terms is a kind of animation that transits from transition to sleepy snoopy.
+    /// It will also be part of the jump graph.
+    let rph: [Animation]
     let specialImages: [URL] // images that will be used as decorations
     let background: URL?
     
-    private init(graph: JumpGraph, dreams: [Animation], masks: [Mask], specialImages: [URL], background: URL?) {
+    private init(graph: JumpGraph, dreams: [Animation], dreamTransitions: [Animation], rph: [Animation], masks: [Mask], specialImages: [URL], background: URL?) {
         self.jumpGraph = graph
         self.dreams = dreams
+        self.dreamTransitions = dreamTransitions
+        self.rph = rph
         self.masks = masks
         self.specialImages = specialImages
         self.background = background
     }
     
     static func from(files: [URL]) -> AnimationCollection {
-        let files = files.sorted { $0.path() < $1.path() }
+        let files = files.sorted(using: FileSortComparator())
         var specialImages: [URL] = []
         var background: URL?
         var allContexts = [AnimationContext]()
         var masks: [String: Mask] = [:]
         var dreams: [Animation] = []
+        var dreamTransitions: [Animation] = []
+        var rph: [Animation] = []
         var index = 0
         while index < files.count {
             defer { index += 1 }
@@ -158,7 +171,12 @@ struct AnimationCollection {
                     }
                 } else if ParsedFileName.isDream(resourceName) {
                     dreams.append(contentsOf: animationContexts.map(\.animation))
+                } else if ParsedFileName.isDreamTransition(resourceName) {
+                    dreamTransitions.append(contentsOf: animationContexts.map(\.animation))
                 } else {
+                    if ParsedFileName.isRph(resourceName) {
+                        rph.append(contentsOf: animationContexts.lazy.map(\.animation))
+                    }
                     allContexts.append(contentsOf: animationContexts)
                 }
                 index = endOfAnimationIndex - 1
@@ -168,6 +186,8 @@ struct AnimationCollection {
         }
         return AnimationCollection(graph: createJumpGraph(context: allContexts),
                                    dreams: dreams,
+                                   dreamTransitions: dreamTransitions,
+                                   rph: rph,
                                    masks: Array(masks.values),
                                    specialImages: specialImages,
                                    background: background)
@@ -176,27 +196,44 @@ struct AnimationCollection {
     typealias AnimationContext = (animation: Animation, source: Substring?, destination: Substring?)
     
     private static func constructVideoAnimation(from files: ArraySlice<URL>) -> [AnimationContext] {
-        var currentClip: Clip<URL>?
-        var source: Substring?
-        var destination: Substring?
+        typealias ClipContext = (clip: Clip<URL>, source: Substring?, destination: Substring?)
+        var introClips: [ClipContext] = []
+        var loopClips: [Clip<URL>] = []
+        var outroClips: [ClipContext] = []
         var animations = [AnimationContext]()
         for file in files {
             let parsedName = ParsedFileName.from(fileName: file.deletingPathExtension().lastPathComponent)
             let clip = Clip.from(parsedName: parsedName, sourceFile: file)
-            let mergedSuccessfully = currentClip?.tryMerge(clip) ?? false
-            if mergedSuccessfully {
-                source = source ?? parsedName.from
-                destination = destination ?? parsedName.to
-            } else {
-                if let currentClip = currentClip {
-                    animations.append((Animation(clip: currentClip), source, destination))
-                }
-                currentClip = clip
-                source = parsedName.from
-                destination = parsedName.to
+            if clip.intro != nil {
+                introClips.append((clip, parsedName.from, parsedName.to))
+            } else if clip.loop != nil {
+                loopClips.append(clip)
+            } else if clip.outro != nil {
+                outroClips.append((clip, parsedName.from, parsedName.to))
             }
         }
-        animations.append((Animation(clip: currentClip!), source, destination))
+        if !outroClips.isEmpty {
+            for loopClip in loopClips {
+                for index in introClips.indices {
+                    if !introClips[index].clip.tryMerge(loopClip) {
+                        fatalError("merging introClip and loopClip failed! IntroClip: \(introClips[index].clip), loopClip: \(loopClip)")
+                    }
+                }
+            }
+            for outroClip in outroClips {
+                for introClip in introClips {
+                    var clip = introClip.clip
+                    if !clip.tryMerge(outroClip.clip) {
+                        fatalError("merging introClip and outroClip failed! IntroClip: \(introClip.clip), outroClip: \(outroClip.clip)")
+                    }
+                    animations.append((Animation(clip: clip), introClip.source ?? outroClip.source, outroClip.destination ?? introClip.destination))
+                }
+            }
+        } else {
+            for clip in introClips {
+                animations.append((Animation(clip: clip.clip), clip.source, clip.destination))
+            }
+        }
         return animations
     }
     
@@ -281,7 +318,25 @@ struct AnimationCollection {
     }
 }
 
-enum ClipKind: Int {
+struct FileSortComparator: SortComparator {
+    var order: SortOrder = .forward
+    
+    func compare(_ lhs: URL, _ rhs: URL) -> ComparisonResult {
+        let lhsName = lhs.lastPathComponent
+        let lhsKey = lhsName[lhsName.index(lhsName.startIndex, offsetBy: 3)...]
+        let rhsName = rhs.lastPathComponent
+        let rhsKey = rhsName[rhsName.index(rhsName.startIndex, offsetBy: 3)...]
+        if lhsKey == rhsKey {
+            return .orderedSame
+        } else if lhsKey < rhsKey {
+            return .orderedAscending
+        } else {
+            return .orderedDescending
+        }
+    }
+}
+
+enum ClipKind: Int, Hashable {
     case normal = -1
     case mask = 0
     case outline = 1
@@ -315,16 +370,14 @@ enum ClipKind: Int {
 ///
 struct Clip<MediaType> {
     let name: String
-    let variation: String?
     let kind: ClipKind
 
     private(set) var intro: MediaType?
     private(set) var loop: MediaType?
     private(set) var outro: MediaType?
     
-    init(name: String, variation: String? = nil, kind: ClipKind = .normal, intro: MediaType? = nil, loop: MediaType? = nil, outro: MediaType? = nil) {
+    init(name: String, kind: ClipKind = .normal, intro: MediaType? = nil, loop: MediaType? = nil, outro: MediaType? = nil) {
         self.name = name
-        self.variation = variation
         self.kind = kind
         self.intro = intro
         self.loop = loop
@@ -334,7 +387,6 @@ struct Clip<MediaType> {
     fileprivate static func from(parsedName: ParsedFileName, sourceFile: MediaType) -> Self {
         var clip = Clip(
             name: String(parsedName.resourceName),
-            variation: parsedName.variation.map(String.init),
             kind: ClipKind(isMask: parsedName.isMask, isOutline: parsedName.isOutline)
         )
         if parsedName.isLoop {
@@ -365,7 +417,7 @@ struct Clip<MediaType> {
 
 extension Clip: Equatable where MediaType: Equatable {
     static func == (this: Clip<MediaType>, other: Clip<MediaType>) -> Bool {
-        this.name == other.name && this.variation == other.variation
+        this.name == other.name && this.kind == other.kind
             && this.intro == other.intro && this.loop == other.loop && this.outro == other.outro
     }
 }
@@ -373,7 +425,7 @@ extension Clip: Equatable where MediaType: Equatable {
 extension Clip: Hashable where MediaType: Hashable {
     func hash(into hasher: inout Hasher) {
         hasher.combine(name)
-        hasher.combine(variation)
+        hasher.combine(kind)
         hasher.combine(intro)
         hasher.combine(loop)
         hasher.combine(outro)

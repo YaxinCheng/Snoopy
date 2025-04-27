@@ -27,7 +27,6 @@ struct ParsedFileName {
     var isOutro: Bool = false // Outro, To, Reveal
     var isMask: Bool = false
     var isOutline: Bool = false
-    var variation: Substring? = nil
     var isHideOrReveal: Bool = false // Hide, Reveal
 
     /// Parse file names into components.
@@ -44,8 +43,6 @@ struct ParsedFileName {
             } else if component == "To" {
                 parsed.to = components[index + 1]
                 index += 1
-            } else if component.count == 1 {
-                parsed.variation = component
             }
             // one name can only be either intro, outro, or loop, or none.
             parsed.isIntro = parsed.isIntro || component == "Intro" || component == "From" || component == "Reveal"
@@ -98,7 +95,15 @@ struct ParsedFileName {
         resourceName.starts(with: "AS")
     }
 
+    static func isDreamTransition<S: StringProtocol>(_ resourceName: S) -> Bool {
+        resourceName.starts(with: "ST")
+    }
+
     static func isMask<S: StringProtocol>(_ resourceName: S) -> Bool {
         resourceName.starts(with: "TM")
+    }
+    
+    static func isRph<S: StringProtocol>(_ resourceName: S) -> Bool {
+        resourceName == "RPH"
     }
 }
