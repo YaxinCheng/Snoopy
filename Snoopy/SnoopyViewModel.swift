@@ -31,7 +31,7 @@ final class SnoopyViewModel: ObservableObject {
                 currentMask = nil
                 currentTransition = nil
             }
-//            firstAnimation = currentAnimation == nil
+            firstAnimation = currentAnimation == nil
         }
     }
 
@@ -39,7 +39,7 @@ final class SnoopyViewModel: ObservableObject {
     private var currentTransition: Clip<URL>?
 
     @Published var didFinishPlaying: Bool = false
-    private var firstAnimation = false
+    private var firstAnimation = true
 
     private let backgroundColors: [NSColor] = [
         .systemGreen,
@@ -106,7 +106,7 @@ final class SnoopyViewModel: ObservableObject {
         cropNode.maskNode = nil
         cropNode.removeAllChildren()
         cropNode.removeFromParent()
-        outlineNode = .clear
+        outlineNode.removeFromParent()
         imageNode = nil
         didFinishPlaying = false
     }
@@ -217,16 +217,17 @@ final class SnoopyViewModel: ObservableObject {
     }
 
     func moveToTheNextAnimation(scene: SKScene) {
-        // TODO: start dreaming from sleepy snoopy mode
-        if let currentAnimation = currentAnimation,
-           let nextAnimation = animations.jumpGraph[currentAnimation]?.randomElement()
-        {
-            self.currentAnimation = nextAnimation
-        } else if let currentAnimation = currentAnimation,
-                  ParsedFileName.isDream(currentAnimation.name)
-        {
-            // dream finished playing.
-            self.currentAnimation = animations.rph.randomElement()
+        guard let finishedAnimation = currentAnimation else {
+            fatalError("No current animation. This function can only be called after the first animation is played.")
+        }
+        if let nextAnimation = animations.jumpGraph[finishedAnimation]?.randomElement() {
+            if animations.rph.contains(nextAnimation) {
+                currentAnimation = randomDream()
+            } else {
+                currentAnimation = nextAnimation
+            }
+        } else if ParsedFileName.isDream(finishedAnimation.name) {
+            currentAnimation = animations.rph.randomElement()
         } else {
             currentAnimation = randomAnimation()
         }

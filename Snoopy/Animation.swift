@@ -114,13 +114,13 @@ struct AnimationCollection {
     let masks: [Mask]
     let dreams: [Animation]
     let dreamTransitions: [Animation]
-    /// rph for lack of better terms is a kind of animation that transits from transition to sleepy snoopy.
+    /// rph for lack of better terms is a kind of animation that bridges transition to and from sleepy snoopy.
     /// It will also be part of the jump graph.
-    let rph: [Animation]
+    let rph: Set<Animation>
     let specialImages: [URL] // images that will be used as decorations
     let background: URL?
     
-    private init(graph: JumpGraph, dreams: [Animation], dreamTransitions: [Animation], rph: [Animation], masks: [Mask], specialImages: [URL], background: URL?) {
+    private init(graph: JumpGraph, dreams: [Animation], dreamTransitions: [Animation], rph: Set<Animation>, masks: [Mask], specialImages: [URL], background: URL?) {
         self.jumpGraph = graph
         self.dreams = dreams
         self.dreamTransitions = dreamTransitions
@@ -138,7 +138,7 @@ struct AnimationCollection {
         var masks: [String: Mask] = [:]
         var dreams: [Animation] = []
         var dreamTransitions: [Animation] = []
-        var rph: [Animation] = []
+        var rph: Set<Animation> = []
         var index = 0
         while index < files.count {
             defer { index += 1 }
@@ -175,7 +175,7 @@ struct AnimationCollection {
                     dreamTransitions.append(contentsOf: animationContexts.map(\.animation))
                 } else {
                     if ParsedFileName.isRph(resourceName) {
-                        rph.append(contentsOf: animationContexts.lazy.map(\.animation))
+                        rph.formUnion(animationContexts.lazy.map(\.animation))
                     }
                     allContexts.append(contentsOf: animationContexts)
                 }
