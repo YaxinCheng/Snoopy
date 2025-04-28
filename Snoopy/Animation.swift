@@ -7,13 +7,6 @@
 
 import Foundation
 
-// Ignore these two types of files as I don't know how to handle them yet.
-private let IGNORED_KEYWORDS: Set<String> = [
-    "Outline",
-    "Mask",
-    "Hide",
-    "Reveal"
-]
 private let HEIC_FILE_TYPE: String = "heic"
 private let MOV_FILE_TYPE: String = "mov"
 private let DESIGNATION_KEYWORD: String = "_To_"
@@ -46,7 +39,7 @@ enum Animation: Equatable, Hashable {
         case .video(let clip):
             clip.outro?.lastPathComponent.contains(DESIGNATION_KEYWORD) ?? false
         case .imageSequence(let clip):
-            clip.outro?.template.contains(DESIGNATION_KEYWORD) ?? false
+            clip.outro?.prefix.contains(DESIGNATION_KEYWORD) ?? false
         }
     }
     
@@ -56,6 +49,29 @@ enum Animation: Equatable, Hashable {
             clip.name
         case .imageSequence(let clip):
             clip.name
+        }
+    }
+    
+    var kind: ClipKind {
+        switch self {
+        case .video(let clip):
+            clip.kind
+        case .imageSequence(let clip):
+            clip.kind
+        }
+    }
+    
+    func unwrapToImageSequence() -> Clip<ImageSequence> {
+        switch self {
+        case .imageSequence(let clip): clip
+        case .video: fatalError("trying to unwrap a video clip to an image sequence clip")
+        }
+    }
+    
+    func unwrapToVideo() -> Clip<URL> {
+        switch self {
+        case .video(let clip): clip
+        case .imageSequence: fatalError("trying to unwrap an image sequence clip to a video clip")
         }
     }
 }
@@ -72,167 +88,175 @@ extension Animation: CustomDebugStringConvertible {
     }
 }
 
+struct Mask {
+    private var _animations: [Clip<ImageSequence>?] = [nil, nil]
+    
+    mutating func add(animation: Animation) {
+        let clip = animation.unwrapToImageSequence()
+        _animations[clip.kind.rawValue] = clip
+    }
+    
+    var mask: Clip<ImageSequence> {
+        _animations[ClipKind.mask.rawValue]!
+    }
+    
+    var outline: Clip<ImageSequence> {
+        _animations[ClipKind.outline.rawValue]!
+    }
+}
+
 /// AnimationCollection is a data structure that stores all the animations.
 /// It is a map that maps the relation that one animation can jump to one or multiple other animations.
 struct AnimationCollection {
     typealias JumpGraph = [Animation: [Animation]]
     
-    let animations: JumpGraph // key: Animation, value: animations can be jumpped from the current animation
+    let jumpGraph: JumpGraph // key: Animation, value: animations can be jumpped from the current animation
+    let masks: [Mask]
+    let dreams: [Animation]
+    let dreamTransitions: [Animation]
+    /// rph for lack of better terms is a kind of animation that bridges transition to and from sleepy snoopy.
+    /// It will also be part of the jump graph.
+    let rph: Set<Animation>
     let specialImages: [URL] // images that will be used as decorations
     let background: URL?
     
-    private init(graph: JumpGraph, specialImages: [URL], background: URL?) {
-        self.animations = graph
+    private init(graph: JumpGraph, dreams: [Animation], dreamTransitions: [Animation], rph: Set<Animation>, masks: [Mask], specialImages: [URL], background: URL?) {
+        self.jumpGraph = graph
+        self.dreams = dreams
+        self.dreamTransitions = dreamTransitions
+        self.rph = rph
+        self.masks = masks
         self.specialImages = specialImages
         self.background = background
     }
     
     static func from(files: [URL]) -> AnimationCollection {
-        let files = files.sorted { $0.path() < $1.path() }
+        let files = files.sorted(using: FileSortComparator())
         var specialImages: [URL] = []
         var background: URL?
         var allContexts = [AnimationContext]()
+        var masks: [String: Mask] = [:]
+        var dreams: [Animation] = []
+        var dreamTransitions: [Animation] = []
+        var rph: Set<Animation> = []
         var index = 0
         while index < files.count {
             defer { index += 1 }
             let fileURL = files[index]
             let fileExtension = fileURL.pathExtension
             let fileName = fileURL.deletingPathExtension().lastPathComponent
-            guard let parsedName = parse(fileName: fileName) else {
-                continue
-            }
+            let resourceName = ParsedFileName.extractResourceName(from: fileName)
             switch fileExtension {
-            case HEIC_FILE_TYPE where isSnoopyHouse(parsedName.resourceName):
+            case HEIC_FILE_TYPE where ParsedFileName.isSnoopyHouse(resourceName):
                 specialImages.append(fileURL)
-            case HEIC_FILE_TYPE where isBackground(parsedName.resourceName):
+            case HEIC_FILE_TYPE where ParsedFileName.isBackground(resourceName):
                 background = fileURL
             case HEIC_FILE_TYPE, MOV_FILE_TYPE:
                 let endOfAnimationIndex = files[index...].findFirstUnmatch {
-                    $0.lastPathComponent.range(of: "^\\d{3}_\(parsedName.resourceName).*\\.(heic|mov)$", options: .regularExpression) != nil
+                    $0.lastPathComponent.range(of: "^\\d{3}_\(resourceName).*\\.(heic|mov)$", options: .regularExpression) != nil
                 }
                 let animationContexts: [AnimationContext] = switch fileExtension {
                 case HEIC_FILE_TYPE:
-                    constructImageSequenceAnimation(from: files[index ..< endOfAnimationIndex], resourceName: parsedName.resourceName)
+                    constructImageSequenceAnimation(from: files[index ..< endOfAnimationIndex], resourceName: resourceName)
                 case MOV_FILE_TYPE:
                     constructVideoAnimation(from: files[index ..< endOfAnimationIndex])
                 default:
                     fatalError("Unreachable: unexpected file type \(fileExtension)")
                 }
-                allContexts.append(contentsOf: animationContexts)
+                if ParsedFileName.isMask(resourceName) {
+                    for animation in animationContexts.lazy.map(\.animation) {
+                        masks.setDefault(Mask(), forKey: animation.name) {
+                            $0.add(animation: animation)
+                        }
+                    }
+                } else if ParsedFileName.isDream(resourceName) {
+                    dreams.append(contentsOf: animationContexts.map(\.animation))
+                } else if ParsedFileName.isDreamTransition(resourceName) {
+                    dreamTransitions.append(contentsOf: animationContexts.map(\.animation))
+                } else {
+                    if ParsedFileName.isRph(resourceName) {
+                        rph.formUnion(animationContexts.lazy.map(\.animation))
+                    }
+                    allContexts.append(contentsOf: animationContexts)
+                }
                 index = endOfAnimationIndex - 1
             default:
                 Log.error(msg: "Unexpected file type \(fileName)")
             }
         }
         return AnimationCollection(graph: createJumpGraph(context: allContexts),
-                                   specialImages: specialImages, background: background)
+                                   dreams: dreams,
+                                   dreamTransitions: dreamTransitions,
+                                   rph: rph,
+                                   masks: Array(masks.values),
+                                   specialImages: specialImages,
+                                   background: background)
     }
     
-    struct ParsedFileName {
-        var resourceName: Substring
-        var from: Substring? = nil
-        var to: Substring? = nil
-        var isIntro: Bool = false
-        var isLoop: Bool = false
-        var isOutro: Bool = false
-    }
-    
-    /// Parse file names into components.
-    ///
-    /// **Note**: the current version will ignore files with the words
-    /// appeared in the IGNORED_KEYWORDS
-    private static func parse(fileName: String) -> ParsedFileName? {
-        let components = fileName.split(separator: "_")
-        var parsed = ParsedFileName(resourceName: components[1])
-        
-        var index = 2
-        while index < components.count {
-            // TODO: remove this logic after figuring out how to handle masks and outlines.
-            if IGNORED_KEYWORDS.contains(where: { $0 == components[index] }) {
-                return nil
-            }
-            let component = components[index]
-            if component == "From" {
-                parsed.from = components[index + 1]
-                index += 1
-            } else if component == "To" {
-                parsed.to = components[index + 1]
-                index += 1
-            }
-            // one name can only be either intro, outro, or loop, or none.
-            parsed.isIntro = parsed.isIntro || component == "Intro" || component == "From"
-            parsed.isOutro = !parsed.isIntro && (parsed.isOutro || component == "Outro" || component == "To")
-            parsed.isLoop = !parsed.isIntro && !parsed.isOutro && (parsed.isLoop || component == "Loop")
-            index += 1
-        }
-        return parsed
-    }
-    
-    private static func isSnoopyHouse<S: StringProtocol>(_ resourceName: S) -> Bool {
-        resourceName.starts(with: "IS")
-    }
-    
-    private static func isBackground<S: StringProtocol>(_ resourceName: S) -> Bool {
-        resourceName == "Background"
-    }
-    
-    struct AnimationContext {
-        let animation: Animation
-        let source: Substring?
-        let destination: Substring?
-    }
+    typealias AnimationContext = (animation: Animation, source: Substring?, destination: Substring?)
     
     private static func constructVideoAnimation(from files: ArraySlice<URL>) -> [AnimationContext] {
-        var currentClip: Clip<URL>?
-        var source: Substring?
-        var destination: Substring?
+        typealias ClipContext = (clip: Clip<URL>, source: Substring?, destination: Substring?)
+        var introClips: [ClipContext] = []
+        var loopClips: [Clip<URL>] = []
+        var outroClips: [ClipContext] = []
         var animations = [AnimationContext]()
         for file in files {
-            guard let parsedName = parse(fileName: file.deletingPathExtension().lastPathComponent) else {
-                fatalError("Unparseable file name for video: \(file.lastPathComponent)")
-            }
+            let parsedName = ParsedFileName.from(fileName: file.deletingPathExtension().lastPathComponent)
             let clip = Clip.from(parsedName: parsedName, sourceFile: file)
-            let mergedSuccessfully = currentClip?.tryMerge(clip) == true
-            if mergedSuccessfully {
-                source = source ?? parsedName.from
-                destination = destination ?? parsedName.to
-            } else {
-                if let currentClip = currentClip {
-                    animations.append(.init(animation: Animation(clip: currentClip), source: source, destination: destination))
-                }
-                currentClip = clip
-                source = parsedName.from
-                destination = parsedName.to
+            if clip.intro != nil {
+                introClips.append((clip, parsedName.from, parsedName.to))
+            } else if clip.loop != nil {
+                loopClips.append(clip)
+            } else if clip.outro != nil {
+                outroClips.append((clip, parsedName.from, parsedName.to))
             }
         }
-        animations.append(.init(animation: Animation(clip: currentClip!), source: source, destination: destination))
+        if !outroClips.isEmpty {
+            for loopClip in loopClips {
+                for index in introClips.indices {
+                    if !introClips[index].clip.tryMerge(loopClip) {
+                        fatalError("merging introClip and loopClip failed! IntroClip: \(introClips[index].clip), loopClip: \(loopClip)")
+                    }
+                }
+            }
+            for outroClip in outroClips {
+                for introClip in introClips {
+                    var clip = introClip.clip
+                    if !clip.tryMerge(outroClip.clip) {
+                        fatalError("merging introClip and outroClip failed! IntroClip: \(introClip.clip), outroClip: \(outroClip.clip)")
+                    }
+                    animations.append((Animation(clip: clip), introClip.source ?? outroClip.source, outroClip.destination ?? introClip.destination))
+                }
+            }
+        } else {
+            for clip in introClips {
+                animations.append((Animation(clip: clip.clip), clip.source, clip.destination))
+            }
+        }
         return animations
     }
     
     private static func constructImageSequenceAnimation(from files: ArraySlice<URL>, resourceName: some StringProtocol) -> [AnimationContext] {
-        var introClip: Clip<ImageSequence>?
-        var outroClips: [(Clip<ImageSequence>, Substring?)] = []
+        var introClips: [ClipKind: (clip: Clip<ImageSequence>, source: Substring?, destination: Substring?, isTransitional: Bool)] = [:]
+        var outroClips: [(clip: Clip<ImageSequence>, destination: Substring?)] = []
         var animations = [AnimationContext]()
-        var source: Substring?
-        var destination: Substring?
         var index = files.startIndex
         while index < files.endIndex {
             let fileName = files[index].deletingPathExtension().lastPathComponent
-            let template = extractNameTemplate(fileName: fileName)
+            let sequenceNamePrefix = ParsedFileName.extractImageSequenceNamePrefix(fileName: fileName)
             let endIndexOfClip = files[index...].findFirstUnmatch {
-                $0.lastPathComponent.range(of: "\(template)\\d{6}.heic", options: .regularExpression) != nil
+                $0.lastPathComponent.range(of: "\(sequenceNamePrefix)\\d{6}.heic", options: .regularExpression) != nil
             }
-            let imageSequence = ImageSequence(template: String(template),
+            let imageSequence = ImageSequence(prefix: String(sequenceNamePrefix),
                                               lastFile: UInt8(endIndexOfClip - index - 1),
                                               baseURL: files[index].deletingLastPathComponent())
-            let parsedName = parse(fileName: fileName)!
+            let parsedName = ParsedFileName.from(fileName: fileName)
             let clip = Clip.from(parsedName: parsedName, sourceFile: imageSequence)
             if clip.intro != nil {
-                introClip = clip
-                source = source ?? parsedName.from
-                destination = destination ?? parsedName.to
+                introClips[clip.kind] = (clip, parsedName.from, parsedName.to, parsedName.from != nil || parsedName.isHideOrReveal)
             } else if clip.loop != nil { // there must be an intro if there is a loop, and since it's sorted, the intro comes first
-                if introClip?.tryMerge(clip) != true {
+                if introClips[clip.kind]?.clip.tryMerge(clip) != true {
                     fatalError("failed to merge intro and loop clip of \(resourceName)")
                 }
             } else {
@@ -245,28 +269,30 @@ struct AnimationCollection {
         // * Intro: BP001
         // * Intro: BP001, Outro: BP002
         // * Intro: BP001, Outro: BP003
-        if outroClips.isEmpty || (introClip != nil && outroClips.allSatisfy { $0.1 != nil }) {
-            animations.append(.init(animation: Animation(clip: introClip!), source: source, destination: destination))
+        // If the intro clip has source, then we do not list it as a separate animation
+        if outroClips.isEmpty || (!introClips.isEmpty && outroClips.allSatisfy { $0.destination != nil }) {
+            for introClip in introClips.values {
+                if outroClips.isEmpty || !introClip.isTransitional {
+                    animations.append((Animation(clip: introClip.clip), introClip.source, introClip.destination))
+                }
+            }
         }
-        for (var outroClip, destination) in outroClips {
-            guard introClip == nil || outroClip.tryMerge(introClip!) else {
+        for (outroClip, destination) in outroClips {
+            if var clip = introClips[outroClip.kind], clip.clip.tryMerge(outroClip) {
+                animations.append((Animation(clip: clip.clip), clip.source, destination))
+            } else if introClips[outroClip.kind] == nil {
+                animations.append((Animation(clip: outroClip), nil, destination))
+            } else {
                 fatalError("failed to merge intro and outro clip of \(resourceName)")
             }
-            animations.append(.init(animation: Animation(clip: outroClip), source: source, destination: destination))
         }
         return animations
-    }
-    
-    private static func extractNameTemplate(fileName: String) -> Substring {
-        let lastUnderscore = fileName.lastIndex(of: "_")
-        assert(lastUnderscore != nil, "found file name with no underscore: \(fileName)")
-        return fileName[...lastUnderscore!]
     }
     
     private static func createJumpGraph(context: [AnimationContext]) -> JumpGraph {
         var nameToAnimations = [String: [Animation]]()
         for c in context {
-            let animationName = String(c.animation.name)
+            let animationName = c.animation.name
             if nameToAnimations[animationName] == nil {
                 nameToAnimations[animationName] = []
             }
@@ -292,36 +318,36 @@ struct AnimationCollection {
     }
 }
 
-extension AnimationCollection: Collection {
-    typealias Index = JumpGraph.Index
-    typealias Element = JumpGraph.Element
+struct FileSortComparator: SortComparator {
+    var order: SortOrder = .forward
     
-    subscript(index: JumpGraph.Index) -> JumpGraph.Element {
-        animations[index]
+    func compare(_ lhs: URL, _ rhs: URL) -> ComparisonResult {
+        let lhsName = lhs.lastPathComponent
+        let lhsKey = lhsName[lhsName.index(lhsName.startIndex, offsetBy: 3)...]
+        let rhsName = rhs.lastPathComponent
+        let rhsKey = rhsName[rhsName.index(rhsName.startIndex, offsetBy: 3)...]
+        if lhsKey == rhsKey {
+            return .orderedSame
+        } else if lhsKey < rhsKey {
+            return .orderedAscending
+        } else {
+            return .orderedDescending
+        }
     }
+}
+
+enum ClipKind: Int, Hashable {
+    case normal = -1
+    case mask = 0
+    case outline = 1
     
-    subscript(key: JumpGraph.Key) -> JumpGraph.Value? {
-        animations[key]
-    }
-    
-    func index(after i: JumpGraph.Index) -> JumpGraph.Index {
-        animations.index(after: i)
-    }
-    
-    var startIndex: JumpGraph.Index {
-        animations.startIndex
-    }
-    
-    var endIndex: JumpGraph.Index {
-        animations.endIndex
-    }
-    
-    var keys: JumpGraph.Keys {
-        animations.keys
-    }
-    
-    var values: JumpGraph.Values {
-        animations.values
+    init(isMask: Bool, isOutline: Bool) {
+        switch (isMask, isOutline) {
+        case (false, false): self = .normal
+        case (false, true): self = .outline
+        case (true, false): self = .mask
+        case (true, true): fatalError("Unexpected file name with both Mask and Outline keywords")
+        }
     }
 }
 
@@ -342,15 +368,27 @@ extension AnimationCollection: Collection {
 ///   * Outro to another animation (Outro To or To)
 ///   * Whole animation (From To / No From,  no To, no Intro, no Outro)
 ///
-struct Clip<MediaType>: Equatable, Hashable where MediaType: Equatable, MediaType: Hashable {
+struct Clip<MediaType> {
     let name: String
+    let kind: ClipKind
+
+    private(set) var intro: MediaType?
+    private(set) var loop: MediaType?
+    private(set) var outro: MediaType?
     
-    var intro: MediaType?
-    var loop: MediaType?
-    var outro: MediaType?
+    init(name: String, kind: ClipKind = .normal, intro: MediaType? = nil, loop: MediaType? = nil, outro: MediaType? = nil) {
+        self.name = name
+        self.kind = kind
+        self.intro = intro
+        self.loop = loop
+        self.outro = outro
+    }
     
-    fileprivate static func from(parsedName: AnimationCollection.ParsedFileName, sourceFile: MediaType) -> Self {
-        var clip = Clip(name: String(parsedName.resourceName))
+    fileprivate static func from(parsedName: ParsedFileName, sourceFile: MediaType) -> Self {
+        var clip = Clip(
+            name: String(parsedName.resourceName),
+            kind: ClipKind(isMask: parsedName.isMask, isOutline: parsedName.isOutline)
+        )
         if parsedName.isLoop {
             clip.loop = sourceFile
         } else if parsedName.isOutro {
@@ -366,6 +404,7 @@ struct Clip<MediaType>: Equatable, Hashable where MediaType: Equatable, MediaTyp
         if (intro != nil && other.intro != nil)
             || (outro != nil && other.outro != nil)
             || (loop != nil && other.loop != nil)
+            || (kind != other.kind)
         {
             return false
         }
@@ -373,6 +412,23 @@ struct Clip<MediaType>: Equatable, Hashable where MediaType: Equatable, MediaTyp
         loop = loop ?? other.loop
         outro = outro ?? other.outro
         return true
+    }
+}
+
+extension Clip: Equatable where MediaType: Equatable {
+    static func == (this: Clip<MediaType>, other: Clip<MediaType>) -> Bool {
+        this.name == other.name && this.kind == other.kind
+            && this.intro == other.intro && this.loop == other.loop && this.outro == other.outro
+    }
+}
+
+extension Clip: Hashable where MediaType: Hashable {
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(name)
+        hasher.combine(kind)
+        hasher.combine(intro)
+        hasher.combine(loop)
+        hasher.combine(outro)
     }
 }
 
@@ -386,17 +442,18 @@ struct ImageSequence: Equatable, Hashable {
     ///
     /// The full file name can be reconstructed through `String(format: "\(template)%06d.heic", $number)`.
     /// *Note*: the reconstructed file name does not include the extension.
-    let template: String
+    let prefix: String
     let lastFile: UInt8
     let baseURL: URL
     
     private func fileNameWithExtension(at index: UInt8) -> String {
-        String(format: "\(template)%06d.heic", index)
+        String(format: "\(prefix)%06d.heic", index)
     }
     
     /// urls returns
     var urls: [URL] {
         (0 ... lastFile)
+            .lazy
             .map { self.fileNameWithExtension(at: $0) }
             .map { self.baseURL.appendingPathComponent($0) }
     }
