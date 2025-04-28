@@ -26,13 +26,6 @@ final class AnimatedImageNode: SKSpriteNode {
         super.init(texture: initialTexture, color: .clear, size: initialSize ?? .zero)
     }
     
-    @discardableResult
-    func fullscreen(in scene: SKScene) -> Self {
-        size = scene.size
-        center(in: scene)
-        return self
-    }
-    
     func reset(contentsOf resources: [URL]) -> Self {
         self.resources = resources
         currentIndex = 0
