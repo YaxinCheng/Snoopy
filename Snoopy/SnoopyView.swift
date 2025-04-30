@@ -5,35 +5,20 @@
 //  Created by Yaxin Cheng on 2025-02-09.
 //
 
-import AVKit
-import Foundation
 import SpriteKit
 import SwiftUI
 
 struct SnoopyView: View {
     @StateObject private var viewModel = SnoopyViewModel()
-    private let scene = SKScene()
+    private let scene = SnoopyScene()
 
     var body: some View {
         SpriteView(scene: scene)
             .onAppear {
-                if viewModel.currentAnimation == nil {
-                    viewModel.setup(scene: scene)
-                }
+                viewModel.setup(scene: scene)
             }
-            .onReceive(viewModel.imageSequenceTimer) { _ in
-                viewModel.updateImageSequence()
-            }
-            .onReceive(viewModel.maskTimer) { _ in
-                viewModel.updateMask()
-            }
-            .onReceive(viewModel.videoDidFinishPlaying) { _ in
-                viewModel.videoFinishedPlaying()
-            }
-            .onChange(of: viewModel.didFinishPlaying) {
-                if viewModel.didFinishPlaying {
-                    viewModel.moveToTheNextAnimation(scene: scene)
-                }
+            .onReceive(scene.didFinishPlaying) { _ in
+                viewModel.moveToTheNextAnimation(scene: scene)
             }
     }
 }
