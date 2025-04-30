@@ -91,7 +91,7 @@ extension Animation: CustomDebugStringConvertible {
 struct Mask {
     private var _animations: [Clip<ImageSequence>?] = [nil, nil]
     
-    mutating func add(animation: Animation) {
+    fileprivate mutating func add(animation: Animation) {
         let clip = animation.unwrapToImageSequence()
         _animations[clip.kind.rawValue] = clip
     }
@@ -114,16 +114,18 @@ struct AnimationCollection {
     let masks: [Mask]
     let dreams: [Animation]
     let dreamTransitions: [Animation]
+    let decorations: [Animation]
     /// rph for lack of better terms is a kind of animation that bridges transition to and from sleepy snoopy.
     /// It will also be part of the jump graph.
     let rph: Set<Animation>
     let specialImages: [URL] // images that will be used as decorations
     let background: URL?
     
-    private init(graph: JumpGraph, dreams: [Animation], dreamTransitions: [Animation], rph: Set<Animation>, masks: [Mask], specialImages: [URL], background: URL?) {
+    private init(graph: JumpGraph, dreams: [Animation], dreamTransitions: [Animation], decorations: [Animation], rph: Set<Animation>, masks: [Mask], specialImages: [URL], background: URL?) {
         self.jumpGraph = graph
         self.dreams = dreams
         self.dreamTransitions = dreamTransitions
+        self.decorations = decorations
         self.rph = rph
         self.masks = masks
         self.specialImages = specialImages
@@ -138,6 +140,7 @@ struct AnimationCollection {
         var masks: [String: Mask] = [:]
         var dreams: [Animation] = []
         var dreamTransitions: [Animation] = []
+        var decorations: [Animation] = []
         var rph: Set<Animation> = []
         var index = 0
         while index < files.count {
@@ -173,6 +176,8 @@ struct AnimationCollection {
                     dreams.append(contentsOf: animationContexts.map(\.animation))
                 } else if ParsedFileName.isDreamTransition(resourceName) {
                     dreamTransitions.append(contentsOf: animationContexts.map(\.animation))
+                } else if ParsedFileName.isDecoration(resourceName) {
+                    decorations.append(contentsOf: animationContexts.map(\.animation))
                 } else {
                     if ParsedFileName.isRph(resourceName) {
                         rph.formUnion(animationContexts.lazy.map(\.animation))
@@ -187,6 +192,7 @@ struct AnimationCollection {
         return AnimationCollection(graph: createJumpGraph(context: allContexts),
                                    dreams: dreams,
                                    dreamTransitions: dreamTransitions,
+                                   decorations: decorations,
                                    rph: rph,
                                    masks: Array(masks.values),
                                    specialImages: specialImages,

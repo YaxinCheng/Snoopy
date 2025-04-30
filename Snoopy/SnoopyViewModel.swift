@@ -16,7 +16,7 @@ private let MASK_INTERVAL: TimeInterval = 0.03
 private let HOUSE_SCALE: CGFloat = 720 / 1080
 private let HOUSE_Y_OFFSET: CGFloat = 180 / 1080
 
-// TODO: Weather information.
+@MainActor
 final class SnoopyViewModel: ObservableObject {
     private static let resourceFiles =
         Bundle(for: SnoopyViewModel.self).urls(forResourcesWithExtension: nil, subdirectory: nil) ?? []
@@ -58,6 +58,7 @@ final class SnoopyViewModel: ObservableObject {
     private var didSetupBackground = false
     private var didSetupHouse = false
 
+    @MainActor
     private var cropNode = SKCropNode() {
         willSet {
             cropNode.removeAllChildren()
@@ -65,6 +66,7 @@ final class SnoopyViewModel: ObservableObject {
         }
     }
 
+    @MainActor
     private var outlineNode: AnimatedImageNode = .clear {
         willSet {
             outlineNode.removeFromParent()
@@ -84,6 +86,12 @@ final class SnoopyViewModel: ObservableObject {
         }
     }
 
+    private var decorationNode: SKVideoNode? = nil {
+        willSet {
+            decorationNode?.removeFromParent()
+        }
+    }
+
     let imageSequenceTimer = Timer.publish(every: IMAGES_SEQ_INTERVAL, on: .main, in: .common).autoconnect()
     let maskTimer = Timer.publish(every: MASK_INTERVAL, on: .main, in: .common).autoconnect()
 
@@ -92,6 +100,7 @@ final class SnoopyViewModel: ObservableObject {
             currentAnimation = randomDream()
         }
         reset()
+        // TODO: change the order to set up background and house later.
         setupBackground(scene: scene, colors: backgroundColors, background: animations.background)
         setupSnoopyHouse(scene: scene, houses: animations.specialImages)
         switch currentAnimation! {
@@ -108,6 +117,7 @@ final class SnoopyViewModel: ObservableObject {
         cropNode.removeFromParent()
         outlineNode.removeFromParent()
         imageNode = nil
+        decorationNode = nil
         didFinishPlaying = false
     }
 
@@ -190,6 +200,16 @@ final class SnoopyViewModel: ObservableObject {
         imageNode?.size = scene.size
         imageNode?.center(in: scene)
         scene.addChild(imageNode!)
+
+        let shouldHaveDecoration = (0 ..< 10).randomElement()! >= 7 // only show decoration 30% of the time.
+        if shouldHaveDecoration, let decoration = animations.decorations.randomElement() {
+            let decoItems = expandUrls(from: decoration.unwrapToVideo()).map(AVPlayerItem.init(url:))
+            decorationNode = SKVideoNode(avPlayer: AVQueuePlayer(items: decoItems))
+            decorationNode?.size = scene.size
+            decorationNode?.center(in: scene)
+            scene.addChild(decorationNode!)
+            decorationNode?.play()
+        }
     }
 
     @MainActor

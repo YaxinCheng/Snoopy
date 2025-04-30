@@ -22,3 +22,12 @@ extension SKNode {
         position = CGPoint(x: scene.size.width / 2, y: scene.size.height / 2)
     }
 }
+
+extension SKSpriteNode {
+    @discardableResult
+    func fullscreen(in scene: SKScene) -> Self {
+        self.size = scene.size
+        center(in: scene)
+        return self
+    }
+}

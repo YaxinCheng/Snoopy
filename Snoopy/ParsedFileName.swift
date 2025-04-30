@@ -9,8 +9,7 @@ import Foundation
 
 // VI, WE: sun / moon / other weather for snoopy on the roof
 // AS: dream content
-// ST hide: hide dreams and enter sleepy snoopy on roof mode
-// ST reveal: sleepy snoopy starts dreaming
+// ST dream transition: hide dreams and enter sleepy snoopy on roof mode
 // TM: dream masks
 // IS: Snoopy houses
 //
@@ -105,5 +104,9 @@ struct ParsedFileName {
     
     static func isRph<S: StringProtocol>(_ resourceName: S) -> Bool {
         resourceName == "RPH"
+    }
+    
+    static func isDecoration<S: StringProtocol>(_ resourceName: S) -> Bool {
+        resourceName.starts(with: "IV") || resourceName.starts(with: "WE")
     }
 }
