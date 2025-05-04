@@ -17,17 +17,20 @@ extension SKTexture {
     }
 }
 
-extension SKNode {
-    func center(in scene: SKScene) {
-        position = CGPoint(x: scene.size.width / 2, y: scene.size.height / 2)
-    }
+protocol SKSizedNode: AnyObject {
+    var size: CGSize { get set }
+    var position: CGPoint { get set }
 }
 
-extension SKSpriteNode {
+extension SKSizedNode {
     @discardableResult
-    func fullscreen(in scene: SKScene) -> Self {
+    func fullscreen(in scene: SKScene?) -> Self {
+        guard let scene = scene else { return self }
         self.size = scene.size
-        center(in: scene)
+        self.position = CGPoint(x: scene.size.width / 2, y: scene.size.height / 2)
         return self
     }
 }
+
+extension SKSpriteNode: SKSizedNode {}
+extension SKVideoNode: SKSizedNode {}

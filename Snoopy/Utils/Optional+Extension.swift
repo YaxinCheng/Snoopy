@@ -8,10 +8,7 @@
 import Foundation
 
 func OptionalToArray<T>(_ value: [T]?) -> [T] {
-    guard let value = value else {
-        return []
-    }
-    return value
+    value ?? []
 }
 
 func OptionalToArray<T>(_ value: T?) -> [T] {
