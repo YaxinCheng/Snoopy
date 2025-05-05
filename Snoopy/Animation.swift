@@ -298,11 +298,9 @@ struct AnimationCollection {
     private static func createJumpGraph(context: [AnimationContext]) -> JumpGraph {
         var nameToAnimations = [String: [Animation]]()
         for c in context {
-            let animationName = c.animation.name
-            if nameToAnimations[animationName] == nil {
-                nameToAnimations[animationName] = []
+            nameToAnimations.setDefault([], forKey: c.animation.name) { animations in
+                animations.append(c.animation)
             }
-            nameToAnimations[animationName]?.append(c.animation)
         }
         var jumpGraph: JumpGraph = [:]
         for c in context {
@@ -374,7 +372,7 @@ enum ClipKind: Int, Hashable {
 ///   * Outro to another animation (Outro To or To)
 ///   * Whole animation (From To / No From,  no To, no Intro, no Outro)
 ///
-struct Clip<MediaType> {
+struct Clip<MediaType: Sendable> {
     let name: String
     let kind: ClipKind
 
