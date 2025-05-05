@@ -123,6 +123,7 @@ final class SnoopyScene: SKScene {
         cropNode.maskNode = nil
         cropNode.removeAllChildren()
         cropNode.removeFromParent()
+        outlineNode = .clear
         outlineNode.removeFromParent()
         imageNode = nil
         decorationNode = nil
@@ -163,13 +164,17 @@ final class SnoopyScene: SKScene {
         addChild(cropNode)
         videoNode.play()
         if let mask = mask {
-            keyValueObservers.append(introTransition.last?.waitForItemReady { [weak self] _ in
+            keyValueObservers.append(introTransition.last?.waitForItemReady { _ in
                 let transitionTime = introTransition.map(\.duration).reduce(CMTime.zero, CMTimeAdd)
-                self?.setupMask(player: player, atTime: transitionTime, mask: mask.mask.intro!, outline: mask.outline.intro!)
+                Task { @MainActor [weak self] in
+                    self?.setupMask(player: player, atTime: transitionTime, mask: mask.mask.intro!, outline: mask.outline.intro!)
+                }
             })
-            keyValueObservers.append(playItems.last?.waitForItemReady { [weak self] item in
+            keyValueObservers.append(playItems.last?.waitForItemReady { item in
                 let maskTime = CMTimeMakeWithSeconds(Double(mask.mask.outro?.urls.count ?? 0) * 1.5 * MASK_INTERVAL, preferredTimescale: 600)
-                self?.setupMask(player: player, atTime: CMTimeSubtract(item.duration, maskTime), mask: mask.mask.outro!, outline: mask.outline.outro!)
+                Task { @MainActor [weak self] in
+                    self?.setupMask(player: player, atTime: CMTimeSubtract(item.duration, maskTime), mask: mask.mask.outro!, outline: mask.outline.outro!)
+                }
             })
         } else {
             keyValueObservers.removeAll(keepingCapacity: true)
@@ -228,7 +233,7 @@ final class SnoopyScene: SKScene {
 
     private func updateImageSequence() {
         if let imageNode = imageNode, imageNode.update() {
-            _didFinishPlaying.send(())
+            _didFinishPlaying.send()
         }
     }
 
@@ -244,6 +249,6 @@ final class SnoopyScene: SKScene {
     }
 
     private func videoDidFinishPlaying() {
-        _didFinishPlaying.send(())
+        _didFinishPlaying.send()
     }
 }

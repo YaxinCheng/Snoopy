@@ -17,6 +17,7 @@ extension SKTexture {
     }
 }
 
+@MainActor
 protocol SKSizedNode: AnyObject {
     var size: CGSize { get set }
     var position: CGPoint { get set }

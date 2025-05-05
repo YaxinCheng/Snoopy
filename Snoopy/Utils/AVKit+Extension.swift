@@ -8,7 +8,7 @@
 import AVKit
 
 extension AVPlayerItem {
-    func waitForItemReady(action: @escaping (AVPlayerItem)->Void) -> NSKeyValueObservation {
+    func waitForItemReady(action: @Sendable @escaping (AVPlayerItem)->Void) -> NSKeyValueObservation {
         self.observe(\.status, options: [.initial, .new]) { item, _ in
             guard item.status == .readyToPlay else { return }
             action(item)
