@@ -34,5 +34,5 @@ A simplified version on how to do it is:
 3. Build the Snoopy target
 
 ## Demo
-[screenshot](https://github.com/user-attachments/assets/88ebe8b2-e70b-44a4-89fa-339a833303a7)
-[screenshot](https://github.com/user-attachments/assets/d3faed3f-44f3-476b-9822-26835c8d32f7)
+![screenshot](https://github.com/user-attachments/assets/88ebe8b2-e70b-44a4-89fa-339a833303a7)
+![screenshot](https://github.com/user-attachments/assets/d3faed3f-44f3-476b-9822-26835c8d32f7)
