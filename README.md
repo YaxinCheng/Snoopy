@@ -32,6 +32,7 @@ A simplified version on how to do it is:
 1. Download the code
 2. Open the project with Xcode
 3. Build the Snoopy target
+    * The output file can be found at `~/Library/Developer/Xcode/DerivedData/Snoopy-<SOME_HASH>/Build/Products/Release/Snoopy.saver`
 
 ## Demo
 ![screenshot](https://github.com/user-attachments/assets/88ebe8b2-e70b-44a4-89fa-339a833303a7)
