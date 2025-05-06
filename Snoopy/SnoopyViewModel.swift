@@ -10,6 +10,7 @@ import SwiftUI
 @MainActor
 final class SnoopyViewModel: ObservableObject {
     @Published private(set) var model = SnoopyModel()
+
     func setup(scene: SnoopyScene) {
         if model.currentAnimation == nil {
             model.startRandomDream()
@@ -18,19 +19,18 @@ final class SnoopyViewModel: ObservableObject {
     }
 
     func moveToTheNextAnimation(scene: SnoopyScene) {
-        guard let finishedAnimation = model.currentAnimation else {
-            fatalError("No current animation. This function can only be called after the first animation is played.")
-        }
-        if let nextAnimation = model.nextAnimationOnJumpGraph(source: finishedAnimation) {
-            if model.isAnimationRph(nextAnimation) {
-                model.startRandomDream()
+        if let finishedAnimation = model.currentAnimation {
+            if let nextAnimation = model.nextAnimationOnJumpGraph(source: finishedAnimation) {
+                if model.isAnimationRph(nextAnimation) {
+                    model.startRandomDream()
+                } else {
+                    model.startAnimation(nextAnimation)
+                }
+            } else if ParsedFileName.isDream(finishedAnimation.name) {
+                model.startRph()
             } else {
-                model.startAnimation(nextAnimation)
+                model.startRandomAnimation()
             }
-        } else if ParsedFileName.isDream(finishedAnimation.name) {
-            model.startRph()
-        } else {
-            model.startRandomAnimation()
         }
         setup(scene: scene)
     }

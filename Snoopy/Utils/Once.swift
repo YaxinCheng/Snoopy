@@ -7,7 +7,7 @@
 
 import Foundation
 
-class Once {
+final class Once {
     private var executed: Bool = false
     private let queue: DispatchQueue
 

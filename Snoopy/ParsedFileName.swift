@@ -78,7 +78,11 @@ struct ParsedFileName {
     /// **Warning**: The function crashes if there is not underscore.
     static func extractImageSequenceNamePrefix(fileName: String) -> Substring {
         let lastUnderscore = fileName.lastIndex(of: "_")
-        assert(lastUnderscore != nil, "found file name with no underscore: \(fileName)")
+        #if DEBUG
+        guard lastUnderscore != nil else {
+            Log.fault("found file name with no underscore: \(fileName)")
+        }
+        #endif
         return fileName[...lastUnderscore!]
     }
 
@@ -101,11 +105,11 @@ struct ParsedFileName {
     static func isMask<S: StringProtocol>(_ resourceName: S) -> Bool {
         resourceName.starts(with: "TM")
     }
-    
+
     static func isRph<S: StringProtocol>(_ resourceName: S) -> Bool {
         resourceName == "RPH"
     }
-    
+
     static func isDecoration<S: StringProtocol>(_ resourceName: S) -> Bool {
         resourceName.starts(with: "IV") || resourceName.starts(with: "WE")
     }

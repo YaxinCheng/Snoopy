@@ -48,7 +48,6 @@ final class SnoopyScene: SKScene {
     }
 
     /// imageNode is the node for image sequence animations.
-    // TODO: hypothetically remove this node after video has started.
     private var imageNode: AnimatedImageNode? = nil {
         willSet {
             imageNode?.removeFromParent()
@@ -96,7 +95,7 @@ final class SnoopyScene: SKScene {
         reset()
         let isFirstAnimation = children.isEmpty
         setupBackgroundAndSnoopyHouse.execute {
-            imageSequenceTimer = Timer.publish(every: IMAGES_SEQ_INTERVAL, on: .main, in: .default).autoconnect().sink { [weak self] _ in
+            imageSequenceTimer = Timer.publish(every: IMAGES_SEQ_INTERVAL, on: .main, in: .default).autoconnect().sink { _ in
                 Task { @MainActor [weak self] in
                     self?.updateImageSequence()
                 }
@@ -130,13 +129,11 @@ final class SnoopyScene: SKScene {
     }
 
     private func setupBackground(background: URL?) {
-        let colorNode = SKSpriteNode(color: BACKGROUND_COLOURS.randomElement()!, size: size)
-        colorNode.fullscreen(in: self)
+        let colorNode = SKSpriteNode(color: BACKGROUND_COLOURS.randomElement()!, size: size).fullscreen(in: self)
         addChild(colorNode)
 
         guard let background = background else { return }
-        let backgroundNode = SKSpriteNode(texture: SKTexture(contentsOf: background))
-        backgroundNode.fullscreen(in: self)
+        let backgroundNode = SKSpriteNode(texture: SKTexture(contentsOf: background)).fullscreen(in: self)
         backgroundNode.blendMode = .alpha
         addChild(backgroundNode)
     }
@@ -156,10 +153,8 @@ final class SnoopyScene: SKScene {
         let outroTransition = OptionalToArray(transition?.outro).map(AVPlayerItem.init(url:))
         let totalPlayItems = introTransition + playItems + outroTransition
         let player = AVQueuePlayer(items: totalPlayItems)
-        let videoNode = SKVideoNode(avPlayer: player)
-        videoNode.fullscreen(in: self)
+        let videoNode = SKVideoNode(avPlayer: player).fullscreen(in: self)
         cropNode.addChild(videoNode)
-        outlineNode = .clear
         addChild(outlineNode)
         addChild(cropNode)
         videoNode.play()
@@ -192,6 +187,7 @@ final class SnoopyScene: SKScene {
         // or it will trigger the block multiple times.
         var observer: Any?
         observer = player.addBoundaryTimeObserver(forTimes: [NSValue(time: insertTime)], queue: .global()) {
+            Log.debug("AVPlayer boundary observer triggered at time \(insertTime.seconds) secs")
             if let observer = observer {
                 player.removeTimeObserver(observer)
             }
@@ -208,6 +204,7 @@ final class SnoopyScene: SKScene {
 
         let shouldHaveDecoration = (0 ..< 10).randomElement()! >= 7 // only show decoration 30% of the time.
         if shouldHaveDecoration, let decoration = decorations.randomElement() {
+            Log.debug("decoration triggered: \(decoration.name)")
             let decoItems = expandUrls(from: decoration.unwrapToVideo()).map(AVPlayerItem.init(url:))
             decorationNode = SKVideoNode(avPlayer: AVQueuePlayer(items: decoItems)).fullscreen(in: self)
             addChild(decorationNode!)
@@ -233,6 +230,7 @@ final class SnoopyScene: SKScene {
 
     private func updateImageSequence() {
         if let imageNode = imageNode, imageNode.update() {
+            Log.info("image sequence animation finished playing")
             _didFinishPlaying.send()
         }
     }
@@ -242,6 +240,7 @@ final class SnoopyScene: SKScene {
             let maskFinished = maskNode.update()
             let outlineFinished = outlineNode.update()
             if maskFinished && outlineFinished {
+                Log.info("mask and outline finished playing")
                 cropNode.maskNode = nil
                 outlineNode = .clear
             }
@@ -249,6 +248,7 @@ final class SnoopyScene: SKScene {
     }
 
     private func videoDidFinishPlaying() {
+        Log.info("video animation finished playing")
         _didFinishPlaying.send()
     }
 }

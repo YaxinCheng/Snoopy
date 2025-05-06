@@ -64,18 +64,19 @@ enum Animation: Equatable, Hashable {
     func unwrapToImageSequence() -> Clip<ImageSequence> {
         switch self {
         case .imageSequence(let clip): clip
-        case .video: fatalError("trying to unwrap a video clip to an image sequence clip")
+        case .video: Log.fault("trying to unwrap a video clip to an image sequence clip")
         }
     }
     
     func unwrapToVideo() -> Clip<URL> {
         switch self {
         case .video(let clip): clip
-        case .imageSequence: fatalError("trying to unwrap an image sequence clip to a video clip")
+        case .imageSequence: Log.fault("trying to unwrap an image sequence clip to a video clip")
         }
     }
 }
 
+#if DEBUG
 // For debugging purposes only.
 extension Animation: CustomDebugStringConvertible {
     var debugDescription: String {
@@ -87,6 +88,7 @@ extension Animation: CustomDebugStringConvertible {
         }
     }
 }
+#endif
 
 struct Mask {
     private var _animations: [Clip<ImageSequence>?] = [nil, nil]
@@ -164,7 +166,7 @@ struct AnimationCollection {
                 case MOV_FILE_TYPE:
                     constructVideoAnimation(from: files[index ..< endOfAnimationIndex])
                 default:
-                    fatalError("Unreachable: unexpected file type \(fileExtension)")
+                    unreachable("unexpected file type \(fileExtension)")
                 }
                 if ParsedFileName.isMask(resourceName) {
                     for animation in animationContexts.lazy.map(\.animation) {
@@ -186,7 +188,7 @@ struct AnimationCollection {
                 }
                 index = endOfAnimationIndex - 1
             default:
-                Log.error(msg: "Unexpected file type \(fileName)")
+                unreachable("unexpected file type \(fileName)")
             }
         }
         return AnimationCollection(graph: createJumpGraph(context: allContexts),
@@ -222,7 +224,7 @@ struct AnimationCollection {
             for loopClip in loopClips {
                 for index in introClips.indices {
                     if !introClips[index].clip.tryMerge(loopClip) {
-                        fatalError("merging introClip and loopClip failed! IntroClip: \(introClips[index].clip), loopClip: \(loopClip)")
+                        Log.fault("merging introClip and loopClip failed! IntroClip: \(introClips[index].clip), loopClip: \(loopClip)")
                     }
                 }
             }
@@ -230,7 +232,7 @@ struct AnimationCollection {
                 for introClip in introClips {
                     var clip = introClip.clip
                     if !clip.tryMerge(outroClip.clip) {
-                        fatalError("merging introClip and outroClip failed! IntroClip: \(introClip.clip), outroClip: \(outroClip.clip)")
+                        Log.fault("merging introClip and outroClip failed! IntroClip: \(introClip.clip), outroClip: \(outroClip.clip)")
                     }
                     animations.append((Animation(clip: clip), introClip.source ?? outroClip.source, outroClip.destination ?? introClip.destination))
                 }
@@ -263,7 +265,7 @@ struct AnimationCollection {
                 introClips[clip.kind] = (clip, parsedName.from, parsedName.to, parsedName.from != nil || parsedName.isHideOrReveal)
             } else if clip.loop != nil { // there must be an intro if there is a loop, and since it's sorted, the intro comes first
                 if introClips[clip.kind]?.clip.tryMerge(clip) != true {
-                    fatalError("failed to merge intro and loop clip of \(resourceName)")
+                    Log.fault("failed to merge intro and loop clip of \(resourceName)")
                 }
             } else {
                 outroClips.append((clip, parsedName.to))
@@ -289,7 +291,7 @@ struct AnimationCollection {
             } else if introClips[outroClip.kind] == nil {
                 animations.append((Animation(clip: outroClip), nil, destination))
             } else {
-                fatalError("failed to merge intro and outro clip of \(resourceName)")
+                Log.fault("failed to merge intro and outro clip of \(resourceName)")
             }
         }
         return animations
@@ -350,7 +352,7 @@ enum ClipKind: Int, Hashable {
         case (false, false): self = .normal
         case (false, true): self = .outline
         case (true, false): self = .mask
-        case (true, true): fatalError("Unexpected file name with both Mask and Outline keywords")
+        case (true, true): Log.fault("unexpected file name with both Mask and Outline keywords")
         }
     }
 }
@@ -404,7 +406,11 @@ struct Clip<MediaType: Sendable> {
     }
     
     mutating func tryMerge(_ other: Self) -> Bool {
-        assert(name == other.name, "Cannot merge clips with different names: want \(name), got \(other.name)")
+        #if DEBUG
+        guard name == other.name else {
+            Log.fault("Cannot merge clips with different names: want \(name), got \(other.name)")
+        }
+        #endif
         if (intro != nil && other.intro != nil)
             || (outro != nil && other.outro != nil)
             || (loop != nil && other.loop != nil)
@@ -438,13 +444,16 @@ extension Clip: Hashable where MediaType: Hashable {
 
 /// ImageSequence files are a series of heic images that can be played one by one to form an animation.
 struct ImageSequence: Equatable, Hashable {
-    /// template is the file name template missing the index number.
+    /// prefix is the file name template missing the index number.
+    ///
+    /// It must starts with 3 digits, then has an underscore followed by some alphabetic characters,
+    /// then it ends with another underscore.
     ///
     /// Specifically, it is the prefix of a file name without extension or indexing number.
     ///
     /// For example, *"000\_Background\_"*.
     ///
-    /// The full file name can be reconstructed through `String(format: "\(template)%06d.heic", $number)`.
+    /// The full file name can be reconstructed through `String(format: "\(prefix)%06d.heic", number)`.
     /// *Note*: the reconstructed file name does not include the extension.
     let prefix: String
     let lastFile: UInt8
