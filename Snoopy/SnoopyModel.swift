@@ -16,6 +16,7 @@ struct SnoopyModel {
     
     var currentAnimation: Animation? = nil {
         willSet {
+            Log.debug("current animation: \(currentAnimation?.name ?? "nil"), next animation: \(newValue?.name ?? "nil")")
             let needsMask = currentAnimation == nil || (newValue.map(\.name).map(ParsedFileName.isDream) ?? false)
             if needsMask {
                 currentMask = animations.masks.randomElement()
@@ -43,18 +44,22 @@ struct SnoopyModel {
     }
 
     mutating func startRandomAnimation() {
-        startAnimation(animations.jumpGraph.keys.randomElement()!)
+        Log.info("start random animation")
+        currentAnimation = animations.jumpGraph.keys.randomElement()
     }
 
     mutating func startRandomDream() {
-        startAnimation(animations.dreams.randomElement()!)
+        Log.info("start random dream")
+        currentAnimation = animations.dreams.randomElement()
     }
     
     mutating func startRph() {
-        startAnimation(animations.rph.randomElement()!)
+        Log.info("start rph animation")
+        currentAnimation = animations.rph.randomElement()
     }
     
     mutating func startAnimation(_ animation: Animation) {
+        Log.info("start designated animation")
         currentAnimation = animation
     }
 

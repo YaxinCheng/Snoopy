@@ -11,7 +11,7 @@ Download from the releases, and double click to install.
 ## Getting Started
 
 ### Prerequisites:
-* Swift 6 and above
+* Swift 5 or above
 * Xcode
 
 ### Get Resource Files

@@ -19,7 +19,12 @@ final class AnimatedImageNode: SKSpriteNode {
     }
 
     init(contentsOf resources: [URL]) {
-        assert(!resources.isEmpty, "Empty resources for AnimatedImageNode is not allowed")
+        #if DEBUG
+        guard !resources.isEmpty else {
+            Log.fault("Empty resources for AnimatedImageNode is not allowed")
+        }
+        #endif
+        Log.debug("AnimatedImageNode created with resources: [\(resources.lazy.map(\.lastPathComponent).joined(separator: ", "))]")
         self.resources = resources
         let initialTexture = SKTexture(contentsOf: resources[0])
         let initialSize = initialTexture?.size()
@@ -27,6 +32,7 @@ final class AnimatedImageNode: SKSpriteNode {
     }
     
     func reset(contentsOf resources: [URL]) -> Self {
+        Log.debug("AnimatedImageNode reset with resources: [\(resources.lazy.map(\.lastPathComponent).joined(separator: ", "))]")
         self.resources = resources
         currentIndex = 0
         return self
@@ -50,9 +56,5 @@ final class AnimatedImageNode: SKSpriteNode {
     required init?(coder aDecoder: NSCoder) {
         self.resources = []
         super.init(coder: aDecoder)
-    }
-    
-    var isFinished: Bool {
-        currentIndex >= resources.count - 1
     }
 }
