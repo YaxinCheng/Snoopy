@@ -9,19 +9,17 @@ import Foundation
 
 final class Once {
     private var executed: Bool = false
-    private let queue: DispatchQueue
-
-    init(label: String) {
-        queue = DispatchQueue(label: label)
-    }
+    private var lock = os_unfair_lock_s()
 
     func execute(_ block: () -> Void) {
-        queue.sync { [weak self] in
-            let executed = self?.executed ?? false
-            if !executed {
-                block()
-                self?.executed = true
-            }
+        os_unfair_lock_lock(&lock)
+        let hasExecuted = executed
+        if !executed {
+            executed = true
+        }
+        os_unfair_lock_unlock(&lock)
+        if !hasExecuted {
+            block()
         }
     }
 }

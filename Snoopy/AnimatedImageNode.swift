@@ -32,8 +32,14 @@ final class AnimatedImageNode: SKSpriteNode {
     }
     
     func reset(contentsOf resources: [URL]) -> Self {
+        #if DEBUG
+        guard !resources.isEmpty else {
+            Log.fault("Empty resources for AnimatedImageNode is not allowed")
+        }
+        #endif
         Log.debug("AnimatedImageNode reset with resources: [\(resources.lazy.map(\.lastPathComponent).joined(separator: ", "))]")
         self.resources = resources
+        texture = SKTexture(contentsOf: resources[0])
         currentIndex = 0
         return self
     }
