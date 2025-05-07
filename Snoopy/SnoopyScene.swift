@@ -79,7 +79,7 @@ final class SnoopyScene: SKScene {
     private var maskTimer: AnyCancellable!
 
     /// setupBackgroundAndSnoopyHouse is a once token that executes a given function only once per program run.
-    private let setupBackgroundAndSnoopyHouse = Once(label: "com.snoopy.setupBackgroundAndSnoopyHouse")
+    private lazy var setupBackgroundAndSnoopyHouse = Once()
 
     private let _didFinishPlaying = PassthroughSubject<Void, Never>()
 
