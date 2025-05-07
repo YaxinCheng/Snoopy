@@ -29,7 +29,6 @@ private let LOOP_REPEAT_LIMIT: UInt = 8
 private let IMAGES_SEQ_INTERVAL: TimeInterval = 0.06
 private let MASK_INTERVAL: TimeInterval = 0.03
 
-@MainActor
 final class SnoopyScene: SKScene {
     /// cropNode is a node containing the SKVideoNode for video animations.
     /// We use cropNode to better and easier control the masks.
