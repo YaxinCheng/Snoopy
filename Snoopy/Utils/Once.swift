@@ -7,11 +7,11 @@
 
 import Foundation
 
-final class Once {
+struct Once {
     private var executed: Bool = false
     private var lock = os_unfair_lock_s()
 
-    func execute(_ block: () -> Void) {
+    mutating func execute(_ block: () -> Void) {
         if executed { return }
         os_unfair_lock_lock(&lock)
         let hasExecuted = executed
