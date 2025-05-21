@@ -150,6 +150,9 @@ struct AnimationCollection {
             let fileURL = files[index]
             let fileExtension = fileURL.pathExtension
             let fileName = fileURL.deletingPathExtension().lastPathComponent
+            if Self.isThumbnail(fileName) {
+                continue
+            }
             let resourceName = ParsedFileName.extractResourceName(from: fileName)
             switch fileExtension {
             case HEIC_FILE_TYPE where ParsedFileName.isSnoopyHouse(resourceName):
@@ -166,7 +169,7 @@ struct AnimationCollection {
                 case MOV_FILE_TYPE:
                     constructVideoAnimation(from: files[index ..< endOfAnimationIndex])
                 default:
-                    unreachable("unexpected file type \(fileExtension)")
+                    unreachable("unexpected file extension \"\(fileExtension)\", file is: \(fileURL.path())")
                 }
                 if ParsedFileName.isMask(resourceName) {
                     for animation in animationContexts.lazy.map(\.animation) {
@@ -188,7 +191,7 @@ struct AnimationCollection {
                 }
                 index = endOfAnimationIndex - 1
             default:
-                unreachable("unexpected file type \(fileName)")
+                unreachable("unexpected file: \(fileURL.path())")
             }
         }
         return AnimationCollection(graph: createJumpGraph(context: allContexts),
@@ -199,6 +202,10 @@ struct AnimationCollection {
                                    masks: Array(masks.values),
                                    specialImages: specialImages,
                                    background: background)
+    }
+    
+    private static func isThumbnail(_ fileName: some StringProtocol) -> Bool {
+        fileName.starts(with: "thumbnail")
     }
     
     typealias AnimationContext = (animation: Animation, source: Substring?, destination: Substring?)
