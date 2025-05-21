@@ -11,6 +11,7 @@ struct SnoopyModel {
     private let animations: AnimationCollection = {
         let resourceFiles = Bundle(for: SnoopyScene.self)
             .urls(forResourcesWithExtension: nil, subdirectory: nil) ?? []
+        Log.debug("loaded \(resourceFiles.count) resource files")
         return AnimationCollection.from(files: resourceFiles)
     }()
     
