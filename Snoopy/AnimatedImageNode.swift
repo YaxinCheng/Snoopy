@@ -9,11 +9,10 @@ import Combine
 import SpriteKit
 
 final class AnimatedImageNode: SKSpriteNode {
-    private var textures: [SKTexture?] = []
-    private var currentIndex: Int = 0
+    private var textures: [SKTexture] = []
     
-    static let clear = AnimatedImageNode()
-    
+    static let clear: AnimatedImageNode = .init()
+
     private init() {
         super.init(texture: nil, color: .clear, size: .zero)
     }
@@ -25,8 +24,8 @@ final class AnimatedImageNode: SKSpriteNode {
         }
         #endif
         Log.debug("AnimatedImageNode created with resources: [\(resources.lazy.map(\.lastPathComponent).joined(separator: ", "))]")
-        self.textures = Batch.syncLoad(urls: resources) { SKTexture(contentsOf: $0) }
-        let initialTexture = self.textures.first?.flatMap { $0 }
+        self.textures = Batch.syncLoad(urls: resources) { SKTexture(contentsOf: $0)! }
+        let initialTexture = self.textures.first
         let initialSize = initialTexture?.size()
         super.init(texture: initialTexture, color: .clear, size: initialSize ?? .zero)
     }
@@ -38,24 +37,17 @@ final class AnimatedImageNode: SKSpriteNode {
         }
         #endif
         Log.debug("AnimatedImageNode reset with resources: [\(resources.lazy.map(\.lastPathComponent).joined(separator: ", "))]")
-        textures = Batch.syncLoad(urls: resources) { SKTexture(contentsOf: $0) }
-        texture = textures.first?.flatMap { $0 }
-        currentIndex = 0
+        textures = Batch.syncLoad(urls: resources) { SKTexture(contentsOf: $0)! }
+        texture = textures.first
         return self
     }
     
-    /// update the AnimatedImageNode to the next image,
-    /// and return true for finished, false for still have more.
     @MainActor
     @discardableResult
-    func update() -> Bool {
-        if currentIndex < textures.count {
-            texture = textures[currentIndex]
-            currentIndex += 1
-            return currentIndex == textures.count - 1
-        } else {
-            return true
-        }
+    func play(timePerFrame interval: TimeInterval, completion: @escaping ()->Void) -> AnimatedImageNode {
+        let animation = SKAction.animate(with: textures, timePerFrame: interval)
+        self.run(animation, completion: completion)
+        return self
     }
     
     @available(*, unavailable)

@@ -9,10 +9,11 @@ import Foundation
 
 enum Batch {
     static func syncLoad<R>(urls: Array<URL>, transform: @escaping (URL) -> R) -> [R] {
-        let results = UnsafeMutablePointer<R>.allocate(capacity: urls.count)
-        DispatchQueue.concurrentPerform(iterations: urls.count) { index in
-            (results + index).initialize(to: transform(urls[index]))
+        Array(unsafeUninitializedCapacity: urls.count) { buffer, initializedCount in
+            DispatchQueue.concurrentPerform(iterations: urls.count) { index in
+                (buffer.baseAddress! + index).initialize(to: transform(urls[index]))
+            }
+            initializedCount = urls.count
         }
-        return Array(UnsafeBufferPointer(start: results, count: urls.count))
     }
 }
