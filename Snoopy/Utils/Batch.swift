@@ -16,4 +16,10 @@ enum Batch {
             initializedCount = urls.count
         }
     }
+    
+    static func asyncLoad<R>(urls: Array<URL>, transform: @escaping (URL)->R, completion: @escaping ([R])->Void) {
+        Task.detached {
+            completion(syncLoad(urls: urls, transform: transform))
+        }
+    }
 }
