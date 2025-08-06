@@ -140,12 +140,15 @@ final class SnoopyScene: SKScene {
         addChild(cropNode)
         videoNode.play()
         if let mask = mask {
-            let introMaskCache = MaskCache(mask: mask.mask.intro!, outline: mask.outline.intro!)
+            if !isFirstAnimation {
+                let introMaskCache = MaskCache(mask: mask.mask.intro!, outline: mask.outline.intro!)
+                keyValueObservers.append(introTransition.last?.waitForItemReady { [weak self] _ in
+                    let transitionTime = introTransition.map(\.duration).reduce(CMTime.zero, CMTimeAdd)
+                    self?.setupMask(player: player, atTime: transitionTime, maskCache: introMaskCache)
+                })
+            }
+
             let outroMaskCache = MaskCache(mask: mask.mask.outro!, outline: mask.outline.outro!)
-            keyValueObservers.append(introTransition.last?.waitForItemReady { [weak self] _ in
-                let transitionTime = introTransition.map(\.duration).reduce(CMTime.zero, CMTimeAdd)
-                self?.setupMask(player: player, atTime: transitionTime, maskCache: introMaskCache)
-            })
             keyValueObservers.append(playItems.last?.waitForItemReady { [weak self] item in
                 let maskTime = CMTimeMakeWithSeconds(Double(mask.mask.outro?.urls.count ?? 0) * MASK_INTERVAL, preferredTimescale: 600)
                 self?.setupMask(player: player, atTime: CMTimeSubtract(item.duration, maskTime), maskCache: outroMaskCache)
@@ -237,11 +240,14 @@ final class MaskCache {
     init(mask: ImageSequence, outline: ImageSequence) {
         self.maskSource = mask
         self.outlineSource = outline
-        let mustConvertTexture: (URL) -> SKTexture = { SKTexture(contentsOf: $0)! }
-        Batch.asyncLoad(urls: maskSource.urls, transform: mustConvertTexture) { [weak self] textures in
+        Batch.asyncLoad(
+            urls: maskSource.urls, transform: SKTexture.mustCreateFrom(contentsOf:)
+        ) { [weak self] textures in
             self?.mask = AnimatedImageNode(textures: textures)
         }
-        Batch.asyncLoad(urls: outlineSource.urls, transform: mustConvertTexture) { [weak self] textures in
+        Batch.asyncLoad(
+            urls: outlineSource.urls, transform: SKTexture.mustCreateFrom(contentsOf:)
+        ) { [weak self] textures in
             self?.outline = textures
         }
     }
@@ -251,6 +257,6 @@ final class MaskCache {
     }
 
     var outlineTextures: [SKTexture] {
-        outline ?? Batch.syncLoad(urls: outlineSource.urls) { SKTexture(contentsOf: $0)! }
+        outline ?? Batch.syncLoad(urls: outlineSource.urls, transform: SKTexture.mustCreateFrom(contentsOf:))
     }
 }

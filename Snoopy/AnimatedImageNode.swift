@@ -24,7 +24,7 @@ final class AnimatedImageNode: SKSpriteNode {
         }
         #endif
         Log.debug("AnimatedImageNode created with resources: [\(resources.lazy.map(\.lastPathComponent).joined(separator: ", "))]")
-        self.init(textures: Batch.syncLoad(urls: resources) { SKTexture(contentsOf: $0)! })
+        self.init(textures: Batch.syncLoad(urls: resources, transform: SKTexture.mustCreateFrom(contentsOf:)))
     }
     
     init(textures: [SKTexture]) {
@@ -48,7 +48,7 @@ final class AnimatedImageNode: SKSpriteNode {
         }
         #endif
         Log.debug("AnimatedImageNode reset with resources: [\(resources.lazy.map(\.lastPathComponent).joined(separator: ", "))]")
-        return reset(textures: Batch.syncLoad(urls: resources) { SKTexture(contentsOf: $0)! })
+        return reset(textures: Batch.syncLoad(urls: resources, transform: SKTexture.mustCreateFrom(contentsOf:)))
     }
     
     @discardableResult
@@ -61,6 +61,7 @@ final class AnimatedImageNode: SKSpriteNode {
     @MainActor
     @discardableResult
     func play(timePerFrame interval: TimeInterval, completion: @escaping () -> Void) -> AnimatedImageNode {
+        Log.info("AnimatedImageNode played with interval: \(interval)")
         let animation = SKAction.animate(with: textures, timePerFrame: interval)
         run(animation, completion: completion)
         return self
@@ -68,7 +69,6 @@ final class AnimatedImageNode: SKSpriteNode {
     
     @available(*, unavailable)
     required init?(coder aDecoder: NSCoder) {
-        self.textures = []
         super.init(coder: aDecoder)
     }
 }
