@@ -21,7 +21,6 @@ private let BACKGROUND_COLOURS: [NSColor] = [
     .systemOrange,
     .systemPurple,
     .cyan,
-    .black
 ]
 private let LOOP_REPEAT_LIMIT: UInt = 8
 private let IMAGES_SEQ_INTERVAL: TimeInterval = 0.06
@@ -57,12 +56,6 @@ final class SnoopyScene: SKScene {
             decorationNode?.removeFromParent()
         }
     }
-
-    private lazy var keyValueObservers: [Any?] = {
-        var observers = [Any?]()
-        observers.reserveCapacity(2)
-        return observers
-    }()
 
     /// videoDidFinishPlayingObserver observes when video has finished playing.
     private var videoDidFinishPlayingObserver: AnyCancellable? {
@@ -141,60 +134,52 @@ final class SnoopyScene: SKScene {
         videoNode.play()
         if let mask = mask {
             if !isFirstAnimation {
-                let introMaskCache = MaskCache(mask: mask.mask.intro!, outline: mask.outline.intro!)
-                keyValueObservers.append(introTransition.last?.waitForItemReady { [weak self] _ in
+                Task { [weak self] in
+                    let introMaskCache = MaskCache(mask: mask.mask.intro!, outline: mask.outline.intro!)
+                    guard let _ = await introTransition.last?.ready() else { return }
                     let transitionTime = introTransition.map(\.duration).reduce(CMTime.zero, CMTimeAdd)
-                    self?.setupMask(player: player, atTime: transitionTime, maskCache: introMaskCache)
-                })
+                    await self?.setupMask(player: player, atTime: transitionTime, maskCache: introMaskCache)
+                }
             }
 
-            let outroMaskCache = MaskCache(mask: mask.mask.outro!, outline: mask.outline.outro!)
-            keyValueObservers.append(playItems.last?.waitForItemReady { [weak self] item in
-                let maskTime = CMTimeMakeWithSeconds(Double(mask.mask.outro?.urls.count ?? 0) * MASK_INTERVAL, preferredTimescale: 600)
-                self?.setupMask(player: player, atTime: CMTimeSubtract(item.duration, maskTime), maskCache: outroMaskCache)
-            })
-        } else {
-            keyValueObservers.removeAll(keepingCapacity: true)
+            Task { [weak self] in
+                let outroMaskCache = MaskCache(mask: mask.mask.outro!, outline: mask.outline.outro!)
+                guard let item = await playItems.last?.ready() else { return }
+                // magic number 2: it makes sure the play time for the mask is correct.
+                // Without it, it will be played too early.
+                let maskTime = CMTimeMakeWithSeconds((Double(mask.mask.outro?.urls.count ?? 0) - 2) * MASK_INTERVAL, preferredTimescale: 600)
+                await self?.setupMask(player: player, atTime: CMTimeSubtract(item.duration, maskTime), maskCache: outroMaskCache)
+            }
         }
-
         videoDidFinishPlayingObserver = NotificationCenter.default.publisher(for: .AVPlayerItemDidPlayToEndTime, object: totalPlayItems.last).sink { [weak self] notification in
             self?.videoDidFinishPlaying(video: notification.object as! AVPlayerItem)
         }
     }
 
-    private func setupMask(player: AVPlayer, atTime insertTime: CMTime, maskCache: MaskCache) {
-        // observer needs to be removed after triggering,
-        // or it will trigger the block multiple times.
-        var observer: Any?
-        observer = player.addBoundaryTimeObserver(forTimes: [NSValue(time: insertTime)], queue: .global()) {
-            Log.debug("AVPlayer boundary observer triggered at time \(insertTime.seconds) secs")
-            if let observer = observer {
-                player.removeTimeObserver(observer)
+    @MainActor
+    private func setupMask(player: AVPlayer, atTime insertTime: CMTime, maskCache: MaskCache) async {
+        await player.waitUntil(forTimes: [NSValue(time: insertTime)])
+        Log.info("setting up mask and outline")
+        cropNode.maskNode = maskCache.maskNode.fullscreen(in: self)
+        outlineNode.reset(textures: maskCache.outlineTextures).fullscreen(in: self)
+        await withTaskGroup { group in
+            group.addTask {
+                await (self.cropNode.maskNode as? AnimatedImageNode)?.play(timePerFrame: MASK_INTERVAL)
             }
-            Task { @MainActor [weak self] in
-                Log.info("setting up mask and outline")
-                self?.cropNode.maskNode = maskCache.maskNode.fullscreen(in: self).play(timePerFrame: MASK_INTERVAL) {
-                    Log.info("mask node finished playing")
-                    Task { @MainActor in
-                        self?.cropNode.maskNode = nil
-                    }
-                }
-                self?.outlineNode.reset(textures: maskCache.outlineTextures)
-                    .fullscreen(in: self)
-                    .play(timePerFrame: MASK_INTERVAL) {
-                        Log.info("outline node finished playing")
-                        Task { @MainActor in
-                            self?.outlineNode = .clear
-                        }
-                    }
+            group.addTask {
+                await self.outlineNode.play(timePerFrame: MASK_INTERVAL)
             }
         }
+        Log.info("mask and outline finished playing")
+        cropNode.maskNode = nil
+        outlineNode = .clear
     }
 
     private func setUpSceneFromImageSequenceClip(_ clip: Clip<ImageSequence>, decorations: [Animation]) {
         imageNode = AnimatedImageNode(contentsOf: expandUrls(from: clip)).fullscreen(in: self)
         addChild(imageNode!)
-        imageNode?.play(timePerFrame: IMAGES_SEQ_INTERVAL) { [weak self] in
+        Task { [weak self] in
+            await self?.imageNode?.play(timePerFrame: IMAGES_SEQ_INTERVAL)
             Log.info("image sequence \"\(clip.name)\" animation finished playing")
             self?._didFinishPlaying.send()
         }
@@ -240,15 +225,13 @@ final class MaskCache {
     init(mask: ImageSequence, outline: ImageSequence) {
         self.maskSource = mask
         self.outlineSource = outline
-        Batch.asyncLoad(
-            urls: maskSource.urls, transform: SKTexture.mustCreateFrom(contentsOf:)
-        ) { [weak self] textures in
-            self?.mask = AnimatedImageNode(textures: textures)
-        }
-        Batch.asyncLoad(
-            urls: outlineSource.urls, transform: SKTexture.mustCreateFrom(contentsOf:)
-        ) { [weak self] textures in
-            self?.outline = textures
+        Task { [weak self] in
+            let (maskTextures, outlineTextures) = await (
+                Batch.asyncLoad(urls: mask.urls, transform: SKTexture.mustCreateFrom(contentsOf:)),
+                Batch.asyncLoad(urls: outline.urls, transform: SKTexture.mustCreateFrom(contentsOf:))
+            )
+            self?.mask = await AnimatedImageNode(textures: maskTextures)
+            self?.outline = outlineTextures
         }
     }
 
