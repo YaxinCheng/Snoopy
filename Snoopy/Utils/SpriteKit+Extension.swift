@@ -15,6 +15,10 @@ extension SKTexture {
         }
         self.init(image: image)
     }
+    
+    static func mustCreateFrom(contentsOf imageURL: URL) -> SKTexture {
+        SKTexture(contentsOf: imageURL)!
+    }
 }
 
 protocol SKSizedNode: SKNode {
