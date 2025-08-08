@@ -125,7 +125,7 @@ struct SnoopyTestAppTests {
         #expect(animationCollection.jumpGraph.isEmpty)
         #expect(animationCollection.specialImages.isEmpty)
         #expect(animationCollection.masks.count == 1)
-        #expect(animationCollection.masks.first?.mask == Clip(
+        #expect(animationCollection.masks.first?.value.mask == Clip(
             name: "TM001",
             kind: .mask,
             intro: ImageSequence(
@@ -139,7 +139,7 @@ struct SnoopyTestAppTests {
                 baseURL: BASE_URL
             ),
         ))
-        #expect(animationCollection.masks.first?.outline == Clip(
+        #expect(animationCollection.masks.first?.value.outline == Clip(
             name: "TM001",
             kind: .outline,
             intro: ImageSequence(

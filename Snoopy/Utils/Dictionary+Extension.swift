@@ -8,13 +8,9 @@
 import Foundation
 
 extension Dictionary {
-    mutating func setDefault(_ defaultValue: Value, forKey key: Key) {
-        setDefault(defaultValue, forKey: key) { _ in }
-    }
-
-    mutating func setDefault(_ defaultValue: Value, forKey key: Key, then do: (inout Value) -> Void) {
+    mutating func setDefault(_ defaultValue: @autoclosure () -> Value, forKey key: Key, then do: (inout Value) -> Void) {
         if self[key] == nil {
-            self[key] = defaultValue
+            self[key] = defaultValue()
         }
         `do`(&self[key]!)
     }

@@ -113,7 +113,7 @@ struct AnimationCollection {
     typealias JumpGraph = [Animation: [Animation]]
     
     let jumpGraph: JumpGraph // key: Animation, value: animations can be jumpped from the current animation
-    let masks: [Mask]
+    let masks: [String: Mask]
     let dreams: [Animation]
     let dreamTransitions: [Animation]
     let decorations: [Animation]
@@ -122,8 +122,8 @@ struct AnimationCollection {
     let rph: Set<Animation>
     let specialImages: [URL] // images that will be used as decorations
     let background: URL?
-    
-    private init(graph: JumpGraph, dreams: [Animation], dreamTransitions: [Animation], decorations: [Animation], rph: Set<Animation>, masks: [Mask], specialImages: [URL], background: URL?) {
+
+    private init(graph: JumpGraph, dreams: [Animation], dreamTransitions: [Animation], decorations: [Animation], rph: Set<Animation>, masks: [String: Mask], specialImages: [URL], background: URL?) {
         self.jumpGraph = graph
         self.dreams = dreams
         self.dreamTransitions = dreamTransitions
@@ -150,9 +150,6 @@ struct AnimationCollection {
             let fileURL = files[index]
             let fileExtension = fileURL.pathExtension
             let fileName = fileURL.deletingPathExtension().lastPathComponent
-            if Self.isThumbnail(fileName) {
-                continue
-            }
             let resourceName = ParsedFileName.extractResourceName(from: fileName)
             switch fileExtension {
             case HEIC_FILE_TYPE where ParsedFileName.isSnoopyHouse(resourceName):
@@ -199,13 +196,9 @@ struct AnimationCollection {
                                    dreamTransitions: dreamTransitions,
                                    decorations: decorations,
                                    rph: rph,
-                                   masks: Array(masks.values),
+                                   masks: masks,
                                    specialImages: specialImages,
                                    background: background)
-    }
-    
-    private static func isThumbnail(_ fileName: some StringProtocol) -> Bool {
-        fileName.starts(with: "thumbnail")
     }
     
     typealias AnimationContext = (animation: Animation, source: Substring?, destination: Substring?)
@@ -328,6 +321,23 @@ struct AnimationCollection {
             }
         }
         return jumpGraph
+    }
+    
+    func randomTransitionAndMask() -> (transition: Clip<URL>, mask: Mask) {
+        let transition = dreamTransitions.randomElement()!.unwrapToVideo()
+        let mask = if nonDreamyTransitions.contains(transition.name) {
+            masks["TM007"] // line swiping transition
+        } else {
+            masks.values.randomElement()
+        }
+        return (transition, mask!)
+    }
+    
+    /// nonDreamyTransitions are the ones that are not shown as dreamy,
+    /// aka, cannot use the dream bubble mask.
+    /// For them, we specifically use TM007 mask (line swiping).
+    private var nonDreamyTransitions: [String] {
+        ["ST001", "ST005"]
     }
 }
 

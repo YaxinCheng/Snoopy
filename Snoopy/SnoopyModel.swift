@@ -9,8 +9,8 @@ import Foundation
 
 struct SnoopyModel {
     private let animations: AnimationCollection = {
-        let resourceFiles = Bundle(for: SnoopyScene.self)
-            .urls(forResourcesWithExtension: nil, subdirectory: nil) ?? []
+        let resourceFiles = Bundle.this
+            .urls(forResourcesWithExtension: nil, subdirectory: "Animations") ?? []
         Log.debug("loaded \(resourceFiles.count) resource files")
         return AnimationCollection.from(files: resourceFiles)
     }()
@@ -20,8 +20,7 @@ struct SnoopyModel {
             Log.debug("current animation: \(currentAnimation?.name ?? "nil"), next animation: \(newValue?.name ?? "nil")")
             let needsMask = currentAnimation == nil || (newValue.map(\.name).map(ParsedFileName.isDream) ?? false)
             if needsMask {
-                currentMask = animations.masks.randomElement()
-                currentTransition = animations.dreamTransitions.randomElement()?.unwrapToVideo()
+                (currentTransition, currentMask) = animations.randomTransitionAndMask()
             } else {
                 currentMask = nil
                 currentTransition = nil
