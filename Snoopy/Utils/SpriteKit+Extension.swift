@@ -15,9 +15,20 @@ extension SKTexture {
         }
         self.init(image: image)
     }
+
+    convenience init?(imageData: Data) {
+        guard let image = NSImage(data: imageData) else {
+            return nil
+        }
+        self.init(image: image)
+    }
     
     static func mustCreateFrom(contentsOf imageURL: URL) -> SKTexture {
         SKTexture(contentsOf: imageURL)!
+    }
+
+    static func mustCreateFrom(imageData: Data) -> SKTexture {
+        SKTexture(imageData: imageData)!
     }
 }
 

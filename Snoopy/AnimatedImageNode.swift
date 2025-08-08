@@ -60,13 +60,13 @@ final class AnimatedImageNode: SKSpriteNode {
     
     @MainActor
     @discardableResult
-    func play(timePerFrame interval: TimeInterval, completion: @escaping () -> Void) -> AnimatedImageNode {
+    func play(timePerFrame interval: TimeInterval) async -> AnimatedImageNode {
         Log.info("AnimatedImageNode played with interval: \(interval)")
         let animation = SKAction.animate(with: textures, timePerFrame: interval)
-        run(animation, completion: completion)
+        await run(animation)
         return self
     }
-    
+
     @available(*, unavailable)
     required init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
