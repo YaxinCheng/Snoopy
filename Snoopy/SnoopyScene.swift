@@ -216,30 +216,42 @@ final class SnoopyScene: SKScene {
     }
 }
 
+@MainActor
 final class MaskCache {
-    private var maskSource: ImageSequence!
-    private var outlineSource: ImageSequence!
-    private var mask: AnimatedImageNode?
-    private var outline: [SKTexture]?
+    private let maskSource: [URL]
+    private let outlineSource: [URL]
+    private var _maskNode: AnimatedImageNode?
+    private var _outlineTexture: [SKTexture]?
 
     init(mask: ImageSequence, outline: ImageSequence) {
-        self.maskSource = mask
-        self.outlineSource = outline
-        Task { [weak self] in
-            let (maskTextures, outlineTextures) = await (
-                Batch.asyncLoad(urls: mask.urls, transform: SKTexture.mustCreateFrom(contentsOf:)),
-                Batch.asyncLoad(urls: outline.urls, transform: SKTexture.mustCreateFrom(contentsOf:))
+        maskSource = mask.urls
+        outlineSource = outline.urls
+        Task.detached { [weak self] in
+            guard let cache = self else { return }
+            let (maskTextureData, outlineTextureData) = await (
+                Batch.asyncLoad(urls: cache.maskSource) { try! Data(contentsOf: $0) },
+                Batch.asyncLoad(urls: cache.outlineSource) { try! Data(contentsOf: $0) }
             )
-            self?.mask = await AnimatedImageNode(textures: maskTextures)
-            self?.outline = outlineTextures
+            let maskNode = await AnimatedImageNode(textures: maskTextureData.map(SKTexture.mustCreateFrom(imageData:)))
+            let outlineTextures = outlineTextureData.map(SKTexture.mustCreateFrom(imageData:))
+            Task { @MainActor in
+                cache._maskNode = maskNode
+                cache._outlineTexture = outlineTextures
+            }
         }
     }
 
     var maskNode: AnimatedImageNode {
-        mask ?? AnimatedImageNode(contentsOf: maskSource.urls)
+        if _maskNode == nil {
+            _maskNode = AnimatedImageNode(contentsOf: maskSource)
+        }
+        return _maskNode!
     }
 
     var outlineTextures: [SKTexture] {
-        outline ?? Batch.syncLoad(urls: outlineSource.urls, transform: SKTexture.mustCreateFrom(contentsOf:))
+        if _outlineTexture == nil {
+            _outlineTexture = Batch.syncLoad(urls: outlineSource, transform: SKTexture.mustCreateFrom(contentsOf:))
+        }
+        return _outlineTexture!
     }
 }
