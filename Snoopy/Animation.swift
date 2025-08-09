@@ -113,20 +113,22 @@ struct AnimationCollection {
     typealias JumpGraph = [Animation: [Animation]]
     
     let jumpGraph: JumpGraph // key: Animation, value: animations can be jumpped from the current animation
-    let masks: [Mask]
+    let masks: [String: Mask]
     let dreams: [Animation]
-    let dreamTransitions: [Animation]
+    let dreamTransitions: [Clip<URL>]
+    let specialTransitions: [Clip<URL>]
     let decorations: [Animation]
     /// rph for lack of better terms is a kind of animation that bridges transition to and from sleepy snoopy.
     /// It will also be part of the jump graph.
     let rph: Set<Animation>
     let specialImages: [URL] // images that will be used as decorations
     let background: URL?
-    
-    private init(graph: JumpGraph, dreams: [Animation], dreamTransitions: [Animation], decorations: [Animation], rph: Set<Animation>, masks: [Mask], specialImages: [URL], background: URL?) {
+
+    private init(graph: JumpGraph, dreams: [Animation], dreamTransitions: [Clip<URL>], specialTransitions: [Clip<URL>], decorations: [Animation], rph: Set<Animation>, masks: [String: Mask], specialImages: [URL], background: URL?) {
         self.jumpGraph = graph
         self.dreams = dreams
         self.dreamTransitions = dreamTransitions
+        self.specialTransitions = specialTransitions
         self.decorations = decorations
         self.rph = rph
         self.masks = masks
@@ -137,11 +139,12 @@ struct AnimationCollection {
     static func from(files: [URL]) -> AnimationCollection {
         let files = files.sorted(using: FileSortComparator())
         var specialImages: [URL] = []
+        var specialTransitions: [Clip<URL>] = []
         var background: URL?
         var allContexts = [AnimationContext]()
         var masks: [String: Mask] = [:]
         var dreams: [Animation] = []
-        var dreamTransitions: [Animation] = []
+        var dreamTransitions: [Clip<URL>] = []
         var decorations: [Animation] = []
         var rph: Set<Animation> = []
         var index = 0
@@ -150,15 +153,14 @@ struct AnimationCollection {
             let fileURL = files[index]
             let fileExtension = fileURL.pathExtension
             let fileName = fileURL.deletingPathExtension().lastPathComponent
-            if Self.isThumbnail(fileName) {
-                continue
-            }
             let resourceName = ParsedFileName.extractResourceName(from: fileName)
             switch fileExtension {
             case HEIC_FILE_TYPE where ParsedFileName.isSnoopyHouse(resourceName):
                 specialImages.append(fileURL)
             case HEIC_FILE_TYPE where ParsedFileName.isBackground(resourceName):
                 background = fileURL
+            case MOV_FILE_TYPE where ParsedFileName.isSpecialTransition(resourceName):
+                specialTransitions.append(Clip.from(parsedName: ParsedFileName.from(fileName: fileName), sourceFile: fileURL))
             case HEIC_FILE_TYPE, MOV_FILE_TYPE:
                 let endOfAnimationIndex = files[index...].findFirstUnmatch {
                     $0.lastPathComponent.range(of: "^\\d{3}_\(resourceName).*\\.(heic|mov)$", options: .regularExpression) != nil
@@ -180,7 +182,7 @@ struct AnimationCollection {
                 } else if ParsedFileName.isDream(resourceName) {
                     dreams.append(contentsOf: animationContexts.map(\.animation))
                 } else if ParsedFileName.isDreamTransition(resourceName) {
-                    dreamTransitions.append(contentsOf: animationContexts.map(\.animation))
+                    dreamTransitions.append(contentsOf: animationContexts.map(\.animation).map { $0.unwrapToVideo() })
                 } else if ParsedFileName.isDecoration(resourceName) {
                     decorations.append(contentsOf: animationContexts.map(\.animation))
                 } else {
@@ -197,25 +199,27 @@ struct AnimationCollection {
         return AnimationCollection(graph: createJumpGraph(context: allContexts),
                                    dreams: dreams,
                                    dreamTransitions: dreamTransitions,
+                                   specialTransitions: specialTransitions,
                                    decorations: decorations,
                                    rph: rph,
-                                   masks: Array(masks.values),
+                                   masks: masks,
                                    specialImages: specialImages,
                                    background: background)
     }
     
-    private static func isThumbnail(_ fileName: some StringProtocol) -> Bool {
-        fileName.starts(with: "thumbnail")
-    }
-    
     typealias AnimationContext = (animation: Animation, source: Substring?, destination: Substring?)
     
+    /// constructVideoAnimation takes a bunch of files and combine the related files into the same animation with the related context.
+    /// There are 3 kinds of possible combinations:
+    /// * intro + loop + outro
+    /// * intro
+    /// * intro + outro
+    /// **note**: the source and destination context is used for graph building.
     private static func constructVideoAnimation(from files: ArraySlice<URL>) -> [AnimationContext] {
         typealias ClipContext = (clip: Clip<URL>, source: Substring?, destination: Substring?)
         var introClips: [ClipContext] = []
         var loopClips: [Clip<URL>] = []
         var outroClips: [ClipContext] = []
-        var animations = [AnimationContext]()
         for file in files {
             let parsedName = ParsedFileName.from(fileName: file.deletingPathExtension().lastPathComponent)
             let clip = Clip.from(parsedName: parsedName, sourceFile: file)
@@ -227,29 +231,28 @@ struct AnimationCollection {
                 outroClips.append((clip, parsedName.from, parsedName.to))
             }
         }
-        if !outroClips.isEmpty {
-            for loopClip in loopClips {
-                for index in introClips.indices {
-                    if !introClips[index].clip.tryMerge(loopClip) {
-                        Log.fault("merging introClip and loopClip failed! IntroClip: \(introClips[index].clip), loopClip: \(loopClip)")
-                    }
+        for loopClip in loopClips {
+            for index in introClips.indices {
+                if case .failure(let error) = introClips[index].clip.tryMerge(loopClip) {
+                    Log.fault("merging introClip and loopClip failed! Error: \(error), IntroClip: \(introClips[index].clip.name), loopClip: \(loopClip.name)")
                 }
             }
+        }
+        if !outroClips.isEmpty {
+            var mergedClips: [ClipContext] = []
+            mergedClips.reserveCapacity(outroClips.count * introClips.count)
             for outroClip in outroClips {
                 for introClip in introClips {
                     var clip = introClip.clip
-                    if !clip.tryMerge(outroClip.clip) {
-                        Log.fault("merging introClip and outroClip failed! IntroClip: \(introClip.clip), outroClip: \(outroClip.clip)")
+                    if case .failure(let error) = clip.tryMerge(outroClip.clip) {
+                        Log.fault("merging introClip and outroClip failed! Error: \(error), IntroClip: \(introClip.clip), outroClip: \(outroClip.clip)")
                     }
-                    animations.append((Animation(clip: clip), introClip.source ?? outroClip.source, outroClip.destination ?? introClip.destination))
+                    mergedClips.append((clip, introClip.source ?? outroClip.source, outroClip.destination ?? introClip.destination))
                 }
             }
-        } else {
-            for clip in introClips {
-                animations.append((Animation(clip: clip.clip), clip.source, clip.destination))
-            }
+            introClips = mergedClips
         }
-        return animations
+        return introClips.map { (Animation(clip: $0.clip), $0.source, $0.destination) }
     }
     
     private static func constructImageSequenceAnimation(from files: ArraySlice<URL>, resourceName: some StringProtocol) -> [AnimationContext] {
@@ -271,8 +274,8 @@ struct AnimationCollection {
             if clip.intro != nil {
                 introClips[clip.kind] = (clip, parsedName.from, parsedName.to, parsedName.from != nil || parsedName.isHideOrReveal)
             } else if clip.loop != nil { // there must be an intro if there is a loop, and since it's sorted, the intro comes first
-                if introClips[clip.kind]?.clip.tryMerge(clip) != true {
-                    Log.fault("failed to merge intro and loop clip of \(resourceName)")
+                if case .failure(let error) = introClips[clip.kind]?.clip.tryMerge(clip) {
+                    Log.fault("failed to merge intro and loop clip of \(resourceName): \(error)")
                 }
             } else {
                 outroClips.append((clip, parsedName.to))
@@ -293,7 +296,7 @@ struct AnimationCollection {
             }
         }
         for (outroClip, destination) in outroClips {
-            if var clip = introClips[outroClip.kind], clip.clip.tryMerge(outroClip) {
+            if var clip = introClips[outroClip.kind], case .success(()) = clip.clip.tryMerge(outroClip) {
                 animations.append((Animation(clip: clip.clip), clip.source, destination))
             } else if introClips[outroClip.kind] == nil {
                 animations.append((Animation(clip: outroClip), nil, destination))
@@ -328,6 +331,29 @@ struct AnimationCollection {
             }
         }
         return jumpGraph
+    }
+    
+    func firstTransitionAndMask() -> (transition: Clip<URL>, mask: Mask) {
+        let transition = specialTransitions.randomElement()!
+        let mask = masks.values.randomElement()!
+        return (transition, mask)
+    }
+    
+    func randomTransitionAndMask() -> (transition: Clip<URL>, mask: Mask) {
+        let transition = dreamTransitions.randomElement()!
+        let mask = if nonDreamyTransitions.contains(transition.name) {
+            masks["TM007"] // line swiping transition
+        } else {
+            masks.values.randomElement()
+        }
+        return (transition, mask!)
+    }
+    
+    /// nonDreamyTransitions are the ones that are not shown as dreamy,
+    /// aka, cannot use the dream bubble mask.
+    /// For them, we specifically use TM007 mask (line swiping).
+    private var nonDreamyTransitions: [String] {
+        ["ST001", "ST005"]
     }
 }
 
@@ -412,23 +438,51 @@ struct Clip<MediaType: Sendable> {
         return clip
     }
     
-    mutating func tryMerge(_ other: Self) -> Bool {
+    enum Error: Swift.Error, CustomDebugStringConvertible {
+        case nameNotMatch(expect: String, actual: String)
+        case kindNotMatch(expect: ClipKind, actual: ClipKind)
+        case bothHaveIntro
+        case bothHaveLoop
+        case bothHaveOutro
+        
+        var debugDescription: String {
+            switch self {
+            case .nameNotMatch(expect: let expect, actual: let actual):
+                "name not match: expect '\(expect)', actual '\(actual)'"
+            case .kindNotMatch(expect: let expect, actual: let actual):
+                "kind not match: expect '\(expect)', actual '\(actual)'"
+            case .bothHaveIntro:
+                "both have intro"
+            case .bothHaveLoop:
+                "both have loop"
+            case .bothHaveOutro:
+                "both have outro"
+            }
+        }
+    }
+    
+    mutating func tryMerge(_ other: Self) -> Result<Void, Error> {
         #if DEBUG
         guard name == other.name else {
-            Log.fault("Cannot merge clips with different names: want \(name), got \(other.name)")
+            return .failure(Error.nameNotMatch(expect: name, actual: other.name))
         }
         #endif
-        if (intro != nil && other.intro != nil)
-            || (outro != nil && other.outro != nil)
-            || (loop != nil && other.loop != nil)
-            || (kind != other.kind)
-        {
-            return false
+        if intro != nil, other.intro != nil {
+            return .failure(Error.bothHaveIntro)
+        }
+        if outro != nil, other.outro != nil {
+            return .failure(Error.bothHaveOutro)
+        }
+        if loop != nil, other.loop != nil {
+            return .failure(Error.bothHaveLoop)
+        }
+        if kind != other.kind {
+            return .failure(Error.kindNotMatch(expect: kind, actual: other.kind))
         }
         intro = intro ?? other.intro
         loop = loop ?? other.loop
         outro = outro ?? other.outro
-        return true
+        return .success(())
     }
 }
 

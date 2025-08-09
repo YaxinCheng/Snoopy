@@ -78,7 +78,6 @@ final class SnoopyScene: SKScene {
     /// setup function sets up an animation with given resources.
     func setup(animation: Animation, background: URL?, snoopyHouses: [URL], mask: Mask?, transition: Clip<URL>?, decorations: [Animation]) {
         reset()
-        let isFirstAnimation = children.isEmpty
         setupBackgroundAndSnoopyHouse.execute {
             setupBackground(background: background)
             setupSnoopyHouse(houses: snoopyHouses)
@@ -86,7 +85,7 @@ final class SnoopyScene: SKScene {
 
         switch animation {
         case .video(let clip):
-            setupSceneFromVideoClip(clip, isFirstAnimation: isFirstAnimation, mask: mask, transition: transition)
+            setupSceneFromVideoClip(clip, mask: mask, transition: transition)
         case .imageSequence(let clip):
             setUpSceneFromImageSequenceClip(clip, decorations: decorations)
         }
@@ -120,9 +119,9 @@ final class SnoopyScene: SKScene {
         addChild(houseNode)
     }
 
-    private func setupSceneFromVideoClip(_ clip: Clip<URL>, isFirstAnimation: Bool, mask: Mask?, transition: Clip<URL>?) {
+    private func setupSceneFromVideoClip(_ clip: Clip<URL>, mask: Mask?, transition: Clip<URL>?) {
         let videos = expandUrls(from: clip)
-        let introTransition = isFirstAnimation ? [] : OptionalToArray(transition?.intro).map(AVPlayerItem.init(url:))
+        let introTransition = OptionalToArray(transition?.intro).map(AVPlayerItem.init(url:))
         let playItems = videos.map(AVPlayerItem.init(url:))
         let outroTransition = OptionalToArray(transition?.outro).map(AVPlayerItem.init(url:))
         let totalPlayItems = introTransition + playItems + outroTransition
@@ -133,7 +132,7 @@ final class SnoopyScene: SKScene {
         addChild(cropNode)
         videoNode.play()
         if let mask = mask {
-            if !isFirstAnimation {
+            if !introTransition.isEmpty {
                 Task { [weak self] in
                     let introMaskCache = MaskCache(mask: mask.mask.intro!, outline: mask.outline.intro!)
                     guard let _ = await introTransition.last?.ready() else { return }

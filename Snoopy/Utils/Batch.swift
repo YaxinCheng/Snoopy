@@ -25,13 +25,11 @@ enum Batch {
                     (index, transform(url))
                 }
             }
-            var buffer = [R](unsafeUninitializedCapacity: urls.count) { _, initializedCount in
-                initializedCount = urls.count
-            }
+            var buffer = [R?](repeating: nil, count: urls.count)
             for await (index, transformed) in group {
                 buffer[index] = transformed
             }
-            return buffer
+            return buffer.map { $0! }
         }
     }
 }
