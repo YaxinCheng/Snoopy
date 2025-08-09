@@ -161,11 +161,11 @@ struct SnoopyTestAppTests {
         ].shuffled())
         #expect(animationCollection.jumpGraph.isEmpty)
         #expect(animationCollection.dreamTransitions.count == 4)
-        #expect(animationCollection.dreamTransitions.sorted { $0.urls.last!.path() < $1.urls.last!.path() || $0.urls.first!.path() < $1.urls.first!.path() } == [
-            .video(Clip(name: "ST001", intro: videoTransitionRevealA, outro: videoTransitionHideA)),
-            .video(Clip(name: "ST001", intro: videoTransitionRevealA, outro: videoTransitionHideB)),
-            .video(Clip(name: "ST001", intro: videoTransitionRevealB, outro: videoTransitionHideA)),
-            .video(Clip(name: "ST001", intro: videoTransitionRevealB, outro: videoTransitionHideB)),
+        #expect(animationCollection.dreamTransitions.sorted { $0.outro!.path() < $1.outro!.path() || $0.intro!.path() < $1.intro!.path() } == [
+            Clip(name: "ST001", intro: videoTransitionRevealA, outro: videoTransitionHideA),
+            Clip(name: "ST001", intro: videoTransitionRevealA, outro: videoTransitionHideB),
+            Clip(name: "ST001", intro: videoTransitionRevealB, outro: videoTransitionHideA),
+            Clip(name: "ST001", intro: videoTransitionRevealB, outro: videoTransitionHideB),
         ])
     }
 
@@ -181,6 +181,15 @@ struct SnoopyTestAppTests {
             loop: videoWithLoop,
             outro: videoWithOutroTo
         )))
+    }
+
+    @Test func TestVideoGroupWithoutIntro() async throws {
+        // 101_CA004_Outro
+        let animationCollection = AnimationCollection.from(files: [
+            videoWithOutro,
+        ].shuffled())
+        #expect(animationCollection.specialImages.isEmpty)
+        #expect(animationCollection.jumpGraph.count == 0)
     }
 
     @Test func TestVideoGroupIntroAndOutro() async throws {

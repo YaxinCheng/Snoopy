@@ -18,9 +18,10 @@ struct SnoopyModel {
     var currentAnimation: Animation? = nil {
         willSet {
             Log.debug("current animation: \(currentAnimation?.name ?? "nil"), next animation: \(newValue?.name ?? "nil")")
-            let needsMask = currentAnimation == nil || (newValue.map(\.name).map(ParsedFileName.isDream) ?? false)
+            let isFirstAnimation = currentAnimation == nil
+            let needsMask = isFirstAnimation || (newValue.map(\.name).map(ParsedFileName.isDream) ?? false)
             if needsMask {
-                (currentTransition, currentMask) = animations.randomTransitionAndMask()
+                (currentTransition, currentMask) = isFirstAnimation ? animations.firstTransitionAndMask() : animations.randomTransitionAndMask()
             } else {
                 currentMask = nil
                 currentTransition = nil
