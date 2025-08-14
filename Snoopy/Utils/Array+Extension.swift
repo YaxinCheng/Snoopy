@@ -16,7 +16,7 @@ extension Array {
 extension ArraySlice {
     /// findFirstUnmatch finds the first index where the file does not match with passed in matcher.
     /// **Note**: The source needs to be sorted.
-    func findFirstUnmatch(matches: (Element) -> Bool) -> Int {
+    func findFirstUnmatch(matches: (Element) -> Bool) -> Index {
         var left = startIndex
         var right = endIndex
         while left < right {

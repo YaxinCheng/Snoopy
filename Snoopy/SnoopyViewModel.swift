@@ -11,14 +11,14 @@ import SwiftUI
 final class SnoopyViewModel: ObservableObject {
     @Published private(set) var model = SnoopyModel()
 
-    func setup(scene: SnoopyScene) {
+    func setup(scene: SnoopyScene) async {
         if model.currentAnimation == nil {
             model.startRandomDream()
         }
-        scene.setup(animation: model.currentAnimation!, background: model.background, snoopyHouses: model.specialImages, mask: model.currentMask, transition: model.currentTransition, decorations: model.decorations)
+        await scene.setup(animation: model.currentAnimation!, background: model.background, snoopyHouses: model.specialImages, mask: model.currentMask, transition: model.currentTransition, decorations: model.decorations)
     }
 
-    func moveToTheNextAnimation(scene: SnoopyScene) {
+    func moveToTheNextAnimation(scene: SnoopyScene) async {
         if let finishedAnimation = model.currentAnimation {
             if let nextAnimation = model.nextAnimationOnJumpGraph(source: finishedAnimation) {
                 if model.isAnimationRph(nextAnimation) {
@@ -32,6 +32,6 @@ final class SnoopyViewModel: ObservableObject {
                 model.startRandomAnimation()
             }
         }
-        setup(scene: scene)
+        await setup(scene: scene)
     }
 }

@@ -44,10 +44,10 @@ struct ParsedFileName {
                 index += 1
             }
             // one name can only be either intro, outro, or loop, or none.
-            parsed.isIntro = parsed.isIntro || component == "Intro" || component == "From" || component == "Reveal"
-            parsed.isOutro = !parsed.isIntro && (parsed.isOutro || component == "Outro" || component == "To" || component == "Hide")
+            parsed.isIntro = parsed.isIntro || ["Intro", "From", "Reveal"].contains(component)
+            parsed.isOutro = !parsed.isIntro && (parsed.isOutro || ["Outro", "To", "Hide"].contains(component))
             parsed.isLoop = !parsed.isIntro && !parsed.isOutro && (parsed.isLoop || component == "Loop")
-            parsed.isHideOrReveal = parsed.isHideOrReveal || component == "Hide" || component == "Reveal"
+            parsed.isHideOrReveal = parsed.isHideOrReveal || ["Hide", "Reveal"].contains(component)
             parsed.isMask = parsed.isMask || component == "Mask"
             parsed.isOutline = parsed.isOutline || component == "Outline"
             index += 1
@@ -113,7 +113,7 @@ struct ParsedFileName {
     static func isDecoration<S: StringProtocol>(_ resourceName: S) -> Bool {
         resourceName.starts(with: "IV") || resourceName.starts(with: "WE")
     }
-    
+
     static func isSpecialTransition<S: StringProtocol>(_ resourceName: S) -> Bool {
         resourceName == "ST006"
     }

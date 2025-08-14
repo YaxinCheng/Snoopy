@@ -10,26 +10,24 @@ import SpriteKit
 
 extension SKTexture {
     convenience init?(contentsOf imageURL: URL) {
-        guard let image = NSImage(contentsOf: imageURL) else {
-            return nil
-        }
-        self.init(image: image)
+        guard let image = try? ImageRawData(contentsOf: imageURL) else { return nil }
+        self.init(imageRawData: image)
     }
 
-    convenience init?(imageData: Data) {
-        guard let image = NSImage(data: imageData) else {
-            return nil
-        }
-        self.init(image: image)
+    convenience init(imageRawData: ImageRawData) {
+        self.init(data: imageRawData.data, size: imageRawData.size, flipped: true)
     }
     
+    @MainActor
+    static func asyncFrom(contentsOf imageURL: URL) async throws -> SKTexture {
+        let image = try await ImageRawData.asyncFrom(contentsOf: imageURL)
+        return SKTexture(imageRawData: image)
+    }
+
     static func mustCreateFrom(contentsOf imageURL: URL) -> SKTexture {
         SKTexture(contentsOf: imageURL)!
     }
 
-    static func mustCreateFrom(imageData: Data) -> SKTexture {
-        SKTexture(imageData: imageData)!
-    }
 }
 
 protocol SKSizedNode: SKNode {

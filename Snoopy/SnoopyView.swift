@@ -14,11 +14,13 @@ struct SnoopyView: View {
 
     var body: some View {
         SpriteView(scene: scene)
-            .onAppear {
-                viewModel.setup(scene: scene)
+            .task {
+                await viewModel.setup(scene: scene)
             }
-            .onReceive(scene.didFinishPlaying) { _ in
-                viewModel.moveToTheNextAnimation(scene: scene)
+            .onReceive(scene.didFinishPlaying) {
+                Task {
+                    await viewModel.moveToTheNextAnimation(scene: scene)
+                }
             }
     }
 }
