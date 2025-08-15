@@ -7,20 +7,14 @@
 
 import Foundation
 
-struct Once {
+actor AsyncOnce {
     private var executed: Bool = false
-    private var lock = os_unfair_lock_s()
 
-    mutating func execute(_ block: () -> Void) {
-        if executed { return }
-        os_unfair_lock_lock(&lock)
-        let hasExecuted = executed
+    func execute(_ block: @Sendable () async throws -> Void) async rethrows {
         if !executed {
+            Log.debug("AsyncOnce executed")
             executed = true
-        }
-        os_unfair_lock_unlock(&lock)
-        if !hasExecuted {
-            block()
+            try await block()
         }
     }
 }

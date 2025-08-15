@@ -1,5 +1,5 @@
 //
-//  Clips.swift
+//  Animation.swift
 //  Snoopy
 //
 //  Created by Yaxin Cheng on 2025-02-09.

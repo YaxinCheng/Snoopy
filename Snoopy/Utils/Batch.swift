@@ -18,15 +18,15 @@ enum Batch {
         }
     }
 
-    static func asyncLoad<R: Sendable>(urls: [URL], transform: @escaping @Sendable (URL) -> R) async -> [R] {
-        await withTaskGroup(of: (Int, R).self) { group -> [R] in
+    static func asyncLoad<R: Sendable>(urls: [URL], transform: @escaping @Sendable (URL) throws -> R) async rethrows -> [R] {
+        try await withThrowingTaskGroup(of: (Int, R).self) { group -> [R] in
             for (index, url) in urls.enumerated() {
                 group.addTask {
-                    (index, transform(url))
+                    (index, try transform(url))
                 }
             }
             var buffer = [R?](repeating: nil, count: urls.count)
-            for await (index, transformed) in group {
+            for try await (index, transformed) in group {
                 buffer[index] = transformed
             }
             return buffer.map { $0! }

@@ -36,13 +36,6 @@ final class SnoopyScene: SKScene {
         }
     }
 
-    /// outlineNode is the node displaying mask outlines.
-    private var outlineNode: AnimatedImageNode = .clear {
-        willSet {
-            outlineNode.removeFromParent()
-        }
-    }
-
     /// imageNode is the node for image sequence animations.
     private var imageNode: AnimatedImageNode? = nil {
         willSet {
@@ -65,7 +58,7 @@ final class SnoopyScene: SKScene {
     }
 
     /// setupBackgroundAndSnoopyHouse is a once token that executes a given function only once per program run.
-    private lazy var setupBackgroundAndSnoopyHouse = Once()
+    private lazy var setupBackgroundAndSnoopyHouse = AsyncOnce()
 
     private let _didFinishPlaying = PassthroughSubject<Void, Never>()
 
@@ -76,11 +69,25 @@ final class SnoopyScene: SKScene {
     }
 
     /// setup function sets up an animation with given resources.
-    func setup(animation: Animation, background: URL?, snoopyHouses: [URL], mask: Mask?, transition: Clip<URL>?, decorations: [Animation]) {
+    func setup(animation: Animation, background: URL?, snoopyHouses: [URL], mask: Mask?, transition: Clip<URL>?, decorations: [Animation]) async {
         reset()
-        setupBackgroundAndSnoopyHouse.execute {
-            setupBackground(background: background)
-            setupSnoopyHouse(houses: snoopyHouses)
+        await setupBackgroundAndSnoopyHouse.execute {
+            do {
+                let (colorNode, backgroundNode, houseNode) = try await (
+                    setupColorBackgroundNode(),
+                    setupBackground(background: background),
+                    setupSnoopyHouse(houses: snoopyHouses)
+                )
+                await MainActor.run {
+                    addChild(colorNode)
+                    if let backgroundNode = backgroundNode {
+                        addChild(backgroundNode)
+                    }
+                    addChild(houseNode)
+                }
+            } catch {
+                Log.fault("Unable to load initial resources: \(error)")
+            }
         }
 
         switch animation {
@@ -95,40 +102,39 @@ final class SnoopyScene: SKScene {
         cropNode.maskNode = nil
         cropNode.removeAllChildren()
         cropNode.removeFromParent()
-        outlineNode = .clear
-        outlineNode.removeFromParent()
         imageNode = nil
         decorationNode = nil
     }
 
-    private func setupBackground(background: URL?) {
-        let colorNode = SKSpriteNode(color: BACKGROUND_COLOURS.randomElement()!, size: size).fullscreen(in: self)
-        addChild(colorNode)
-
-        guard let background = background else { return }
-        let backgroundNode = SKSpriteNode(texture: SKTexture(contentsOf: background)).fullscreen(in: self)
-        backgroundNode.blendMode = .alpha
-        addChild(backgroundNode)
+    private func setupColorBackgroundNode() -> some SKNode {
+        return SKSpriteNode(color: BACKGROUND_COLOURS.randomElement()!, size: size).fullscreen(in: self)
     }
 
-    private func setupSnoopyHouse(houses: [URL]) {
+    private func setupBackground(background: URL?) async throws -> SKSpriteNode? {
+        guard let background = background else { return nil }
+        let texture = try await SKTexture.asyncFrom(contentsOf: background)
+        let backgroundNode = SKSpriteNode(texture: texture).fullscreen(in: self)
+        backgroundNode.blendMode = .alpha
+        return backgroundNode
+    }
+
+    private func setupSnoopyHouse(houses: [URL]) async throws -> some SKNode {
         let randomHouse = houses.randomElement()!
-        let houseNode = SKSpriteNode(texture: SKTexture(contentsOf: randomHouse))
+        let texture = try await SKTexture.asyncFrom(contentsOf: randomHouse)
+        let houseNode = SKSpriteNode(texture: texture)
         houseNode.size = CGSize(width: size.width * HOUSE_SCALE, height: size.height * HOUSE_SCALE)
         houseNode.position = CGPoint(x: size.width / 2, y: size.height / 2 - HOUSE_Y_OFFSET)
-        addChild(houseNode)
+        return houseNode
     }
 
     private func setupSceneFromVideoClip(_ clip: Clip<URL>, mask: Mask?, transition: Clip<URL>?) {
-        let videos = expandUrls(from: clip)
         let introTransition = OptionalToArray(transition?.intro).map(AVPlayerItem.init(url:))
-        let playItems = videos.map(AVPlayerItem.init(url:))
+        let playItems = Self.expandUrls(from: clip).map(AVPlayerItem.init(url:))
         let outroTransition = OptionalToArray(transition?.outro).map(AVPlayerItem.init(url:))
         let totalPlayItems = introTransition + playItems + outroTransition
         let player = AVQueuePlayer(items: totalPlayItems)
         let videoNode = SKVideoNode(avPlayer: player).fullscreen(in: self)
         cropNode.addChild(videoNode)
-        addChild(outlineNode)
         addChild(cropNode)
         videoNode.play()
         if let mask = mask {
@@ -145,12 +151,13 @@ final class SnoopyScene: SKScene {
                 let outroMaskCache = MaskCache(mask: mask.mask.outro!, outline: mask.outline.outro!)
                 guard let item = await playItems.last?.ready() else { return }
                 // magic number 2: it makes sure the play time for the mask is correct.
-                // Without it, it will be played too early.
+                // Without it, it will be played too early and cause a flashback.
                 let maskTime = CMTimeMakeWithSeconds((Double(mask.mask.outro?.urls.count ?? 0) - 2) * MASK_INTERVAL, preferredTimescale: 600)
                 await self?.setupMask(player: player, atTime: CMTimeSubtract(item.duration, maskTime), maskCache: outroMaskCache)
             }
         }
         videoDidFinishPlayingObserver = NotificationCenter.default.publisher(for: .AVPlayerItemDidPlayToEndTime, object: totalPlayItems.last).sink { [weak self] notification in
+            Log.debug("Video \"\(clip.name)\" finished playing...")
             self?.videoDidFinishPlaying(video: notification.object as! AVPlayerItem)
         }
     }
@@ -160,40 +167,36 @@ final class SnoopyScene: SKScene {
         await player.waitUntil(forTimes: [NSValue(time: insertTime)])
         Log.info("setting up mask and outline")
         cropNode.maskNode = maskCache.maskNode.fullscreen(in: self)
-        outlineNode.reset(textures: maskCache.outlineTextures).fullscreen(in: self)
-        await withTaskGroup { group in
-            group.addTask {
-                await (self.cropNode.maskNode as? AnimatedImageNode)?.play(timePerFrame: MASK_INTERVAL)
-            }
-            group.addTask {
-                await self.outlineNode.play(timePerFrame: MASK_INTERVAL)
-            }
-        }
+        let outlineNode = AnimatedImageNode(textures: maskCache.outlineTextures).fullscreen(in: self)
+        addChild(outlineNode)
+        async let playMask: ()? = (cropNode.maskNode as? AnimatedImageNode)?.play(timePerFrame: MASK_INTERVAL)
+        async let playOutline: () = outlineNode.play(timePerFrame: MASK_INTERVAL)
+        Log.info("mask and outline started playing")
+        _ = await (playMask, playOutline)
         Log.info("mask and outline finished playing")
         cropNode.maskNode = nil
-        outlineNode = .clear
+        outlineNode.removeFromParent()
     }
 
     private func setUpSceneFromImageSequenceClip(_ clip: Clip<ImageSequence>, decorations: [Animation]) {
-        imageNode = AnimatedImageNode(contentsOf: expandUrls(from: clip)).fullscreen(in: self)
+        imageNode = AnimatedImageNode(contentsOf: Self.expandUrls(from: clip)).fullscreen(in: self)
         addChild(imageNode!)
-        Task { [weak self] in
-            await self?.imageNode?.play(timePerFrame: IMAGES_SEQ_INTERVAL)
-            Log.info("image sequence \"\(clip.name)\" animation finished playing")
-            self?._didFinishPlaying.send()
+        Task {
+            await imageNode?.play(timePerFrame: IMAGES_SEQ_INTERVAL)
+            self._didFinishPlaying.send()
         }
 
-        let shouldHaveDecoration = (0 ..< 10).randomElement()! >= 7 // only show decoration 30% of the time.
+        let shouldHaveDecoration = (0 ..< 10).randomElement()! > 8 // only show decoration 10% of the time.
         if shouldHaveDecoration, let decoration = decorations.randomElement() {
             Log.debug("decoration triggered: \(decoration.name)")
-            let decoItems = expandUrls(from: decoration.unwrapToVideo()).map(AVPlayerItem.init(url:))
+            let decoItems = Self.expandUrls(from: decoration.unwrapToVideo()).map(AVPlayerItem.init(url:))
             decorationNode = SKVideoNode(avPlayer: AVQueuePlayer(items: decoItems)).fullscreen(in: self)
             addChild(decorationNode!)
             decorationNode?.play()
         }
     }
 
-    private func expandUrls(from videoClip: Clip<URL>) -> [URL] {
+    private static func expandUrls(from videoClip: Clip<URL>) -> [URL] {
         var result = OptionalToArray(videoClip.intro)
         let loopRepeatingLimit = UInt.random(in: 1...LOOP_REPEAT_LIMIT)
         result.append(contentsOf: OptionalToArray(videoClip.loop).repeat(count: loopRepeatingLimit))
@@ -201,7 +204,7 @@ final class SnoopyScene: SKScene {
         return result
     }
 
-    private func expandUrls(from imageSequenceClip: Clip<ImageSequence>) -> [URL] {
+    private static func expandUrls(from imageSequenceClip: Clip<ImageSequence>) -> [URL] {
         var result = OptionalToArray(imageSequenceClip.intro?.urls)
         let loopRepeatingLimit = UInt.random(in: 1...LOOP_REPEAT_LIMIT)
         result.append(contentsOf: OptionalToArray(imageSequenceClip.loop?.urls).repeat(count: loopRepeatingLimit))
@@ -223,25 +226,29 @@ final class MaskCache {
     private var _outlineTexture: [SKTexture]?
 
     init(mask: ImageSequence, outline: ImageSequence) {
-        maskSource = mask.urls
-        outlineSource = outline.urls
-        Task.detached { [weak self] in
-            guard let cache = self else { return }
-            let (maskTextureData, outlineTextureData) = await (
-                Batch.asyncLoad(urls: cache.maskSource) { try! Data(contentsOf: $0) },
-                Batch.asyncLoad(urls: cache.outlineSource) { try! Data(contentsOf: $0) }
-            )
-            let maskNode = await AnimatedImageNode(textures: maskTextureData.map(SKTexture.mustCreateFrom(imageData:)))
-            let outlineTextures = outlineTextureData.map(SKTexture.mustCreateFrom(imageData:))
-            Task { @MainActor in
-                cache._maskNode = maskNode
-                cache._outlineTexture = outlineTextures
+        let maskURLs = mask.urls
+        maskSource = maskURLs
+        let outlineURLs = outline.urls
+        outlineSource = outlineURLs
+        Task.detached {
+            do {
+                let (maskImages, outlineImages) = try await (
+                    Batch.asyncLoad(urls: maskURLs) { try ImageRawData(contentsOf: $0) },
+                    Batch.asyncLoad(urls: outlineURLs) { try ImageRawData(contentsOf: $0) }
+                )
+                await MainActor.run { [weak self] in
+                    self?._maskNode = AnimatedImageNode(textures: maskImages.map { SKTexture(imageRawData: $0) })
+                    self?._outlineTexture = outlineImages.map { SKTexture(imageRawData: $0) }
+                }
+            } catch {
+                Log.error("failed to load mask / layout images: \(error)")
             }
         }
     }
 
     var maskNode: AnimatedImageNode {
         if _maskNode == nil {
+            Log.notice("_maskNode was read before being loaded")
             _maskNode = AnimatedImageNode(contentsOf: maskSource)
         }
         return _maskNode!
@@ -249,6 +256,7 @@ final class MaskCache {
 
     var outlineTextures: [SKTexture] {
         if _outlineTexture == nil {
+            Log.notice("_outlineTexture was read before being loaded")
             _outlineTexture = Batch.syncLoad(urls: outlineSource, transform: SKTexture.mustCreateFrom(contentsOf:))
         }
         return _outlineTexture!
