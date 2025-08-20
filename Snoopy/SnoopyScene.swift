@@ -27,26 +27,10 @@ private let IMAGES_SEQ_INTERVAL: TimeInterval = 0.06
 private let MASK_INTERVAL: TimeInterval = 0.06
 
 final class SnoopyScene: SKScene {
-    /// cropNode is a node containing the SKVideoNode for video animations.
-    /// We use cropNode to better and easier control the masks.
-    private var cropNode = SKCropNode() {
-        willSet {
-            cropNode.removeAllChildren()
-            cropNode.removeFromParent()
-        }
-    }
-
     /// imageNode is the node for image sequence animations.
     private var imageNode: AnimatedImageNode? = nil {
         willSet {
             imageNode?.removeFromParent()
-        }
-    }
-
-    /// decorationNode displays the decoration resources when image sequence is playing.
-    private var decorationNode: SKVideoNode? = nil {
-        willSet {
-            decorationNode?.removeFromParent()
         }
     }
 
@@ -70,7 +54,6 @@ final class SnoopyScene: SKScene {
 
     /// setup function sets up an animation with given resources.
     func setup(animation: Animation, background: URL?, snoopyHouses: [URL], mask: Mask?, transition: Clip<URL>?, decorations: [Animation]) async {
-        reset()
         await setupBackgroundAndSnoopyHouse.execute {
             do {
                 let (colorNode, backgroundNode, houseNode) = try await (
@@ -98,14 +81,6 @@ final class SnoopyScene: SKScene {
         }
     }
 
-    private func reset() {
-        cropNode.maskNode = nil
-        cropNode.removeAllChildren()
-        cropNode.removeFromParent()
-        imageNode = nil
-        decorationNode = nil
-    }
-
     private func setupColorBackgroundNode() -> some SKNode {
         return SKSpriteNode(color: BACKGROUND_COLOURS.randomElement()!, size: size).fullscreen(in: self)
     }
@@ -129,42 +104,71 @@ final class SnoopyScene: SKScene {
 
     private func setupSceneFromVideoClip(_ clip: Clip<URL>, mask: Mask?, transition: Clip<URL>?) {
         let introTransition = OptionalToArray(transition?.intro).map(AVPlayerItem.init(url:))
-        let playItems = Self.expandUrls(from: clip).map(AVPlayerItem.init(url:))
         let outroTransition = OptionalToArray(transition?.outro).map(AVPlayerItem.init(url:))
-        let totalPlayItems = introTransition + playItems + outroTransition
-        let player = AVQueuePlayer(items: totalPlayItems)
-        let videoNode = SKVideoNode(avPlayer: player).fullscreen(in: self)
-        cropNode.addChild(videoNode)
-        addChild(cropNode)
-        videoNode.play()
-        if let mask = mask {
-            if !introTransition.isEmpty {
+        let playItems = Self.expandUrls(from: clip).map(AVPlayerItem.init(url:))
+        let hasTransition = !introTransition.isEmpty || !outroTransition.isEmpty
+        let (mainPlayer, secondaryPlayer) = if hasTransition {
+            (AVQueuePlayer(items: introTransition + outroTransition), AVQueuePlayer(items: playItems))
+        } else {
+            (AVQueuePlayer(items: playItems), AVQueuePlayer())
+        }
+        let mainVideoNode = SKVideoNode(avPlayer: mainPlayer).fullscreen(in: self)
+        addChild(mainVideoNode)
+        imageNode = nil
+        
+        if let mask = mask { // has transition and mask
+            let secondaryVideoNode = MaskedVideoNode(videoNode: SKVideoNode(avPlayer: secondaryPlayer).fullscreen(in: self))
+            addChild(secondaryVideoNode)
+            secondaryVideoNode.isHidden = true
+            
+            if !introTransition.isEmpty { // has intro transition
+                mainVideoNode.play()
                 Task { [weak self] in
                     let introMaskCache = MaskCache(mask: mask.mask.intro!, outline: mask.outline.intro!)
-                    guard let _ = await introTransition.last?.ready() else { return }
-                    let transitionTime = introTransition.map(\.duration).reduce(CMTime.zero, CMTimeAdd)
-                    await self?.setupMask(player: player, atTime: transitionTime, maskCache: introMaskCache)
+                    guard let item = await introTransition.last?.ready() else { return }
+                    let insertionTime = Self.calculateMaskInsertionTime(maskFrames: mask.mask.intro!.urlsCount, videoDuration: item.duration)
+                    await mainPlayer.waitUntil(forTime: insertionTime)
+                    secondaryVideoNode.isHidden = false
+                    secondaryVideoNode.play()
+                    await self?.playMask(cropNode: secondaryVideoNode, maskCache: introMaskCache)
                 }
+            } else {
+                secondaryVideoNode.isHidden = false
+                secondaryVideoNode.play()
             }
 
             Task { [weak self] in
                 let outroMaskCache = MaskCache(mask: mask.mask.outro!, outline: mask.outline.outro!)
                 guard let item = await playItems.last?.ready() else { return }
-                // magic number 2: it makes sure the play time for the mask is correct.
-                // Without it, it will be played too early and cause a flashback.
-                let maskTime = CMTimeMakeWithSeconds((Double(mask.mask.outro?.urls.count ?? 0) - 2) * MASK_INTERVAL, preferredTimescale: 600)
-                await self?.setupMask(player: player, atTime: CMTimeSubtract(item.duration, maskTime), maskCache: outroMaskCache)
+                let insertionTime = Self.calculateMaskInsertionTime(maskFrames: mask.mask.outro!.urlsCount, videoDuration: item.duration)
+                await secondaryPlayer.waitUntil(forTime: insertionTime)
+                mainVideoNode.play()
+                await self?.playMask(cropNode: secondaryVideoNode, maskCache: outroMaskCache)
+                secondaryVideoNode.removeFromParent()
+            }
+        } else { // no transition
+            mainVideoNode.play()
+        }
+        videoDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: nil).sink { [weak self] notification in
+            guard let item = notification.object as? AVPlayerItem else { return }
+            if item === introTransition.last { // when intro transition finishes, pause until the dream finishes
+                mainVideoNode.pause()
+            } else if item === outroTransition.last || (!hasTransition && item === playItems.last) {
+                Log.info("video animation finished playing: \(item)")
+                self?._didFinishPlaying.send()
+                mainVideoNode.removeFromParent()
             }
         }
-        videoDidFinishPlayingObserver = NotificationCenter.default.publisher(for: .AVPlayerItemDidPlayToEndTime, object: totalPlayItems.last).sink { [weak self] notification in
-            Log.debug("Video \"\(clip.name)\" finished playing...")
-            self?.videoDidFinishPlaying(video: notification.object as! AVPlayerItem)
-        }
+    }
+    
+    private static func calculateMaskInsertionTime(maskFrames: Int, videoDuration: CMTime) -> CMTime {
+        // magic number 2: it makes sure the play time for the mask is correct.
+        // Without it, it will be played too early and cause a flashback.
+        let maskTime = CMTimeMakeWithSeconds((Double(maskFrames - 2)) * MASK_INTERVAL, preferredTimescale: 600)
+        return CMTimeSubtract(videoDuration, maskTime)
     }
 
-    @MainActor
-    private func setupMask(player: AVPlayer, atTime insertTime: CMTime, maskCache: MaskCache) async {
-        await player.waitUntil(forTimes: [NSValue(time: insertTime)])
+    private func playMask(cropNode: some SKCropNode, maskCache: MaskCache) async {
         Log.info("setting up mask and outline")
         cropNode.maskNode = maskCache.maskNode.fullscreen(in: self)
         let outlineNode = AnimatedImageNode(textures: maskCache.outlineTextures).fullscreen(in: self)
@@ -181,9 +185,11 @@ final class SnoopyScene: SKScene {
     private func setUpSceneFromImageSequenceClip(_ clip: Clip<ImageSequence>, decorations: [Animation]) {
         imageNode = AnimatedImageNode(contentsOf: Self.expandUrls(from: clip)).fullscreen(in: self)
         addChild(imageNode!)
+        var decorationNode: SKVideoNode?
         Task {
             await imageNode?.play(timePerFrame: IMAGES_SEQ_INTERVAL)
             self._didFinishPlaying.send()
+            decorationNode?.removeFromParent()
         }
 
         let shouldHaveDecoration = (0 ..< 10).randomElement()! > 8 // only show decoration 10% of the time.
@@ -193,6 +199,11 @@ final class SnoopyScene: SKScene {
             decorationNode = SKVideoNode(avPlayer: AVQueuePlayer(items: decoItems)).fullscreen(in: self)
             addChild(decorationNode!)
             decorationNode?.play()
+            videoDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: decoItems.last).sink { notification in
+                if notification.object as? AVPlayerItem === decoItems.last {
+                    decorationNode?.removeFromParent()
+                }
+            }
         }
     }
 
@@ -210,11 +221,6 @@ final class SnoopyScene: SKScene {
         result.append(contentsOf: OptionalToArray(imageSequenceClip.loop?.urls).repeat(count: loopRepeatingLimit))
         result.append(contentsOf: OptionalToArray(imageSequenceClip.outro?.urls))
         return result
-    }
-
-    private func videoDidFinishPlaying(video: AVPlayerItem) {
-        Log.info("video animation finished playing: \(video)")
-        _didFinishPlaying.send()
     }
 }
 

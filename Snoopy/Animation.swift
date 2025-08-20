@@ -531,4 +531,8 @@ struct ImageSequence: Equatable, Hashable {
             .map { self.fileNameWithExtension(at: $0) }
             .map { self.baseURL.appendingPathComponent($0) }
     }
+    
+    var urlsCount: Int {
+        Int(lastFile)
+    }
 }

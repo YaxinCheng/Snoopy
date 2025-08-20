@@ -76,6 +76,7 @@
 			membershipExceptions = (
 				AnimatedImageNode.swift,
 				Animation.swift,
+				MaskedVideoNode.swift,
 				ParsedFileName.swift,
 				SnoopyModel.swift,
 				SnoopyScene.swift,
@@ -2139,6 +2140,7 @@
 			membershipExceptions = (
 				AnimatedImageNode.swift,
 				Animation.swift,
+				MaskedVideoNode.swift,
 				ParsedFileName.swift,
 				SnoopyModel.swift,
 				SnoopyScene.swift,
