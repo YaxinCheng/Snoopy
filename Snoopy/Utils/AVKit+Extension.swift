@@ -30,6 +30,10 @@ extension AVPlayer {
         var observer: Any?
     }
     
+    func waitUntil(forTime time: CMTime) async {
+        await waitUntil(forTimes: [NSValue(time: time)])
+    }
+    
     /// waitUntil does nothing but wait for the player reaches the given time.
     /// Once the time is reached, it hands the control back to the process.
     func waitUntil(forTimes times: [NSValue]) async {
