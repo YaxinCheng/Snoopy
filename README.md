@@ -12,15 +12,19 @@ Download from the releases, and double click to install.
 * macOS Sonoma (14.0) and above
 
 ### Screensaver can't be opened?
-Setting the screensaver may show alerts like 
+Setting the screensaver and showing only black screen may be related to this issue.
+After unlocking from the black screen, it may show an alert like 
 
 > Screensaver can’t be opened because Apple cannot check it for malicious software
 
-You can do this to solve it:
+Here is what you can do to solve it:
 
 * Open System Settings
-* Privacy & Security
+* Go to `Privacy & Security`
 * Scroll down to the bottom and click allow Snoopy.saver to open anyway
+* Go back to `Screen Saver` in System Settings, and select Snoopy as the screensaver
+* Click on "Open Anyway" when the alert pops up again
+* [Optional] You may need to kill legacyScreensaver process using `pkill legacyScreensaver` in terminal if it still shows a black screen
 
 ## DIY (Develop It Yourself)
 
