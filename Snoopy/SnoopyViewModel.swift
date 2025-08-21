@@ -15,7 +15,7 @@ final class SnoopyViewModel: ObservableObject {
         if model.currentAnimation == nil {
             model.startRandomDream()
         }
-        await scene.setup(animation: model.currentAnimation!, background: model.background, snoopyHouses: model.specialImages, mask: model.currentMask, transition: model.currentTransition, decorations: model.decorations)
+        await scene.setup(animation: model.currentAnimation!, backgroundColor: model.backgroundColor, background: model.background, snoopyHouse: model.snoopyHouse, mask: model.currentMask, transition: model.currentTransition, decorations: model.decorations)
     }
 
     func moveToTheNextAnimation(scene: SnoopyScene) async {

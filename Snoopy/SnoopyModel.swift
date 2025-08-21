@@ -5,7 +5,19 @@
 //  Created by Yaxin Cheng on 2025-04-29.
 //
 
-import Foundation
+import Cocoa
+
+private let BACKGROUND_COLOURS: [NSColor] = [
+    .systemBlue,
+    .systemYellow,
+    .systemCyan,
+    .systemGray,
+    .systemMint,
+    .systemIndigo,
+    .systemOrange,
+    .systemPurple,
+    .cyan,
+]
 
 struct SnoopyModel {
     private let animations: AnimationCollection = {
@@ -31,19 +43,21 @@ struct SnoopyModel {
     
     private(set) var currentMask: Mask?
     private(set) var currentTransition: Clip<URL>?
+    private(set) var backgroundColor: NSColor = BACKGROUND_COLOURS.randomElement()!
+    private(set) var snoopyHouse: URL
+    
+    init() {
+        snoopyHouse = animations.specialImages.randomElement()!
+    }
     
     var background: URL? {
         animations.background
     }
     
-    var specialImages: [URL] {
-        animations.specialImages
-    }
-    
     var decorations: [Animation] {
         animations.decorations
     }
-
+    
     mutating func startRandomAnimation() {
         Log.info("start random animation")
         currentAnimation = animations.jumpGraph.keys.randomElement()
