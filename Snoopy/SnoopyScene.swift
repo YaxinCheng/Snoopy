@@ -29,6 +29,13 @@ final class SnoopyScene: SKScene {
             videoDidFinishPlayingObserver?.cancel()
         }
     }
+    
+    ///decorationDidFinishPlayingObserver observes if the decoration video has finished playing.
+    private var decorationDidFinishPlayingObserver: AnyCancellable? {
+        willSet {
+            decorationDidFinishPlayingObserver?.cancel()
+        }
+    }
 
     /// setupBackgroundAndSnoopyHouse is a once token that executes a given function only once per program run.
     private lazy var setupBackgroundAndSnoopyHouse = AsyncOnce()
@@ -187,7 +194,7 @@ final class SnoopyScene: SKScene {
             decorationNode = SKVideoNode(avPlayer: AVQueuePlayer(items: decoItems)).fullscreen(in: self)
             addChild(decorationNode!)
             decorationNode?.play()
-            videoDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: decoItems.last).sink { notification in
+            decorationDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: decoItems.last).sink { notification in
                 if notification.object as? AVPlayerItem === decoItems.last {
                     decorationNode?.removeFromParent()
                 }
