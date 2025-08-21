@@ -11,17 +11,6 @@ import SpriteKit
 
 private let HOUSE_SCALE: CGFloat = 720 / 1080
 private let HOUSE_Y_OFFSET: CGFloat = 180 / 1080
-private let BACKGROUND_COLOURS: [NSColor] = [
-    .systemBlue,
-    .systemYellow,
-    .systemCyan,
-    .systemGray,
-    .systemMint,
-    .systemIndigo,
-    .systemOrange,
-    .systemPurple,
-    .cyan,
-]
 private let LOOP_REPEAT_LIMIT: UInt = 8
 private let IMAGES_SEQ_INTERVAL: TimeInterval = 0.06
 private let MASK_INTERVAL: TimeInterval = 0.06
@@ -53,13 +42,13 @@ final class SnoopyScene: SKScene {
     }
 
     /// setup function sets up an animation with given resources.
-    func setup(animation: Animation, background: URL?, snoopyHouses: [URL], mask: Mask?, transition: Clip<URL>?, decorations: [Animation]) async {
+    func setup(animation: Animation, backgroundColor: NSColor, background: URL?, snoopyHouse: URL, mask: Mask?, transition: Clip<URL>?, decorations: [Animation]) async {
         await setupBackgroundAndSnoopyHouse.execute {
             do {
                 let (colorNode, backgroundNode, houseNode) = try await (
-                    setupColorBackgroundNode(),
-                    setupBackground(background: background),
-                    setupSnoopyHouse(houses: snoopyHouses)
+                    setupColorBackgroundNode(color: backgroundColor),
+                    setupBackground(background),
+                    setupSnoopyHouse(snoopyHouse),
                 )
                 await MainActor.run {
                     addChild(colorNode)
@@ -81,11 +70,11 @@ final class SnoopyScene: SKScene {
         }
     }
 
-    private func setupColorBackgroundNode() -> some SKNode {
-        return SKSpriteNode(color: BACKGROUND_COLOURS.randomElement()!, size: size).fullscreen(in: self)
+    private func setupColorBackgroundNode(color: NSColor) -> some SKNode {
+        return SKSpriteNode(color: color, size: size).fullscreen(in: self)
     }
 
-    private func setupBackground(background: URL?) async throws -> SKSpriteNode? {
+    private func setupBackground(_ background: URL?) async throws -> SKSpriteNode? {
         guard let background = background else { return nil }
         let texture = try await SKTexture.asyncFrom(contentsOf: background)
         let backgroundNode = SKSpriteNode(texture: texture).fullscreen(in: self)
@@ -93,9 +82,8 @@ final class SnoopyScene: SKScene {
         return backgroundNode
     }
 
-    private func setupSnoopyHouse(houses: [URL]) async throws -> some SKNode {
-        let randomHouse = houses.randomElement()!
-        let texture = try await SKTexture.asyncFrom(contentsOf: randomHouse)
+    private func setupSnoopyHouse(_ house: URL) async throws -> some SKNode {
+        let texture = try await SKTexture.asyncFrom(contentsOf: house)
         let houseNode = SKSpriteNode(texture: texture)
         houseNode.size = CGSize(width: size.width * HOUSE_SCALE, height: size.height * HOUSE_SCALE)
         houseNode.position = CGPoint(x: size.width / 2, y: size.height / 2 - HOUSE_Y_OFFSET)
