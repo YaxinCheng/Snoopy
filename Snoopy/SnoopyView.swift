@@ -11,6 +11,7 @@ import SwiftUI
 struct SnoopyView: View {
     @StateObject private var viewModel = SnoopyViewModel()
     private let scene = SnoopyScene()
+    private let screenSaverStopObserver = DistributedNotificationObserver(name: .screenSaverWillStop)
 
     var body: some View {
         SpriteView(scene: scene)
@@ -21,6 +22,9 @@ struct SnoopyView: View {
                 Task {
                     await viewModel.moveToTheNextAnimation(scene: scene)
                 }
+            }
+            .onReceive(screenSaverStopObserver.publisher) { _ in
+                NSApplication.shared.terminate(nil)
             }
     }
 }

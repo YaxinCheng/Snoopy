@@ -74,6 +74,13 @@ enum Animation: Equatable, Hashable {
         case .imageSequence: Log.fault("trying to unwrap an image sequence clip to a video clip")
         }
     }
+    
+    var isImageSequence: Bool {
+        switch self {
+        case .video(_): return false
+        case .imageSequence(_): return true
+        }
+    }
 }
 
 #if DEBUG
