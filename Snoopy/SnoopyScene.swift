@@ -49,7 +49,7 @@ final class SnoopyScene: SKScene {
     }
 
     /// setup function sets up an animation with given resources.
-    func setup(animation: Animation, backgroundColor: NSColor, background: URL?, snoopyHouse: URL, mask: Mask?, transition: Clip<URL>?, decorations: [Animation]) async {
+    func setup(animation: Animation, backgroundColor: NSColor, background: URL?, snoopyHouse: URL, mask: Mask?, transition: Clip<URL>?, decoration: Animation?) async {
         await setupBackgroundAndSnoopyHouse.execute {
             do {
                 let (colorNode, backgroundNode, houseNode) = try await (
@@ -73,7 +73,7 @@ final class SnoopyScene: SKScene {
         case .video(let clip):
             setupSceneFromVideoClip(clip, mask: mask, transition: transition)
         case .imageSequence(let clip):
-            setUpSceneFromImageSequenceClip(clip, decorations: decorations)
+            setUpSceneFromImageSequenceClip(clip, decoration: decoration)
         }
     }
 
@@ -177,7 +177,7 @@ final class SnoopyScene: SKScene {
         outlineNode.removeFromParent()
     }
 
-    private func setUpSceneFromImageSequenceClip(_ clip: Clip<ImageSequence>, decorations: [Animation]) {
+    private func setUpSceneFromImageSequenceClip(_ clip: Clip<ImageSequence>, decoration: Animation?) {
         imageNode = AnimatedImageNode(contentsOf: Self.expandUrls(from: clip)).fullscreen(in: self)
         addChild(imageNode!)
         var decorationNode: SKVideoNode?
@@ -187,8 +187,7 @@ final class SnoopyScene: SKScene {
             decorationNode?.removeFromParent()
         }
 
-        let shouldHaveDecoration = (0 ..< 10).randomElement()! > 8 // only show decoration 10% of the time.
-        if shouldHaveDecoration, let decoration = decorations.randomElement() {
+        if let decoration = decoration {
             Log.debug("decoration triggered: \(decoration.name)")
             let decoItems = Self.expandUrls(from: decoration.unwrapToVideo()).map(AVPlayerItem.init(url:))
             decorationNode = SKVideoNode(avPlayer: AVQueuePlayer(items: decoItems)).fullscreen(in: self)

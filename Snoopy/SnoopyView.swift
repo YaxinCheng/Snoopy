@@ -24,7 +24,7 @@ struct SnoopyView: View {
                 }
             }
             .onReceive(screenSaverStopObserver.publisher) { _ in
-                exit(0)
+                NSApplication.shared.terminate(nil)
             }
     }
 }

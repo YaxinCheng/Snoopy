@@ -38,6 +38,13 @@ struct SnoopyModel {
                 currentMask = nil
                 currentTransition = nil
             }
+            if newValue?.isImageSequence == true {
+                decoration = if Int.random(in: 0...9) >= 9 { // Only 10% of the time that we should have a decoration
+                    animations.decorations.randomElement()
+                } else {
+                    nil
+                }
+            }
         }
     }
     
@@ -45,6 +52,7 @@ struct SnoopyModel {
     private(set) var currentTransition: Clip<URL>?
     private(set) var backgroundColor: NSColor = BACKGROUND_COLOURS.randomElement()!
     private(set) var snoopyHouse: URL
+    private(set) var decoration: Animation? = nil
     
     init() {
         snoopyHouse = animations.specialImages.randomElement()!
@@ -52,10 +60,6 @@ struct SnoopyModel {
     
     var background: URL? {
         animations.background
-    }
-    
-    var decorations: [Animation] {
-        animations.decorations
     }
     
     mutating func startRandomAnimation() {
