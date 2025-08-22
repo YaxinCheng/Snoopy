@@ -10,9 +10,9 @@ import SwiftUI
 
 struct SnoopyView: View {
     @StateObject private var viewModel = SnoopyViewModel()
+    @StateObject private var screenSaverStopObserver = DistributedNotificationObserver(name: .screenSaverWillStop)
     private let scene = SnoopyScene()
-    private let screenSaverStopObserver = DistributedNotificationObserver(name: .screenSaverWillStop)
-
+    
     var body: some View {
         SpriteView(scene: scene)
             .task {
