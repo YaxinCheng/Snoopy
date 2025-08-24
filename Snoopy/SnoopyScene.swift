@@ -157,10 +157,12 @@ final class SnoopyScene: SKScene {
     }
     
     private static func calculateMaskInsertionTime(maskFrames: Int, videoDuration: CMTime) -> CMTime {
-        // magic number 2: it makes sure the play time for the mask is correct.
-        // Without it, it will be played too early and cause a flashback.
-        let maskTime = CMTimeMakeWithSeconds((Double(maskFrames - 2)) * MASK_INTERVAL, preferredTimescale: 600)
-        return CMTimeSubtract(videoDuration, maskTime)
+        let maskTime = CMTimeMakeWithSeconds(Double(maskFrames) * MASK_INTERVAL, preferredTimescale: 600)
+        let insertionTime = CMTimeSubtract(videoDuration, maskTime)
+        if insertionTime.seconds <= 0 {
+            return videoDuration
+        }
+        return insertionTime
     }
 
     private func playMask(cropNode: some SKCropNode, maskCache: MaskCache) async {
