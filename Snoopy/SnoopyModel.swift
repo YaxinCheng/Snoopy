@@ -27,7 +27,7 @@ struct SnoopyModel {
         return AnimationCollection.from(files: resourceFiles)
     }()
     
-    var currentAnimation: Animation? = nil {
+    var currentAnimation: Animation? {
         willSet {
             Log.debug("current animation: \(currentAnimation?.name ?? "nil"), next animation: \(newValue?.name ?? "nil")")
             let isFirstAnimation = currentAnimation == nil
@@ -39,7 +39,7 @@ struct SnoopyModel {
                 currentTransition = nil
             }
             if newValue?.isImageSequence == true {
-                decoration = if Int.random(in: 0...9) >= 9 { // Only 10% of the time that we should have a decoration
+                decoration = if Int.random(in: 0 ... 9) >= 9 { // Only 10% of the time that we should have a decoration
                     animations.decorations.randomElement()
                 } else {
                     nil
@@ -52,7 +52,7 @@ struct SnoopyModel {
     private(set) var currentTransition: Clip<URL>?
     private(set) var backgroundColor: NSColor = BACKGROUND_COLOURS.randomElement()!
     private(set) var snoopyHouse: URL
-    private(set) var decoration: Animation? = nil
+    private(set) var decoration: Animation?
     
     init() {
         snoopyHouse = animations.specialImages.randomElement()!

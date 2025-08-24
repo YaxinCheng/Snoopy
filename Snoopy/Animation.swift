@@ -77,8 +77,8 @@ enum Animation: Equatable, Hashable {
     
     var isImageSequence: Bool {
         switch self {
-        case .video(_): return false
-        case .imageSequence(_): return true
+        case .video: return false
+        case .imageSequence: return true
         }
     }
 }

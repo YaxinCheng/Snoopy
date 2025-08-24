@@ -17,7 +17,7 @@ private let MASK_INTERVAL: TimeInterval = 0.06
 
 final class SnoopyScene: SKScene {
     /// imageNode is the node for image sequence animations.
-    private var imageNode: AnimatedImageNode? = nil {
+    private var imageNode: AnimatedImageNode? {
         willSet {
             imageNode?.removeFromParent()
         }
@@ -29,8 +29,8 @@ final class SnoopyScene: SKScene {
             videoDidFinishPlayingObserver?.cancel()
         }
     }
-    
-    ///decorationDidFinishPlayingObserver observes if the decoration video has finished playing.
+
+    /// decorationDidFinishPlayingObserver observes if the decoration video has finished playing.
     private var decorationDidFinishPlayingObserver: AnyCancellable? {
         willSet {
             decorationDidFinishPlayingObserver?.cancel()
@@ -110,12 +110,12 @@ final class SnoopyScene: SKScene {
         let mainVideoNode = SKVideoNode(avPlayer: mainPlayer).fullscreen(in: self)
         addChild(mainVideoNode)
         imageNode = nil
-        
+
         if let mask = mask { // has transition and mask
             let secondaryVideoNode = MaskedVideoNode(videoNode: SKVideoNode(avPlayer: secondaryPlayer).fullscreen(in: self))
             addChild(secondaryVideoNode)
             secondaryVideoNode.isHidden = true
-            
+
             if !introTransition.isEmpty { // has intro transition
                 mainVideoNode.play()
                 Task { [weak self] in
@@ -155,7 +155,7 @@ final class SnoopyScene: SKScene {
             }
         }
     }
-    
+
     private static func calculateMaskInsertionTime(maskFrames: Int, videoDuration: CMTime) -> CMTime {
         let maskTime = CMTimeMakeWithSeconds(Double(maskFrames) * MASK_INTERVAL, preferredTimescale: 600)
         let insertionTime = CMTimeSubtract(videoDuration, maskTime)

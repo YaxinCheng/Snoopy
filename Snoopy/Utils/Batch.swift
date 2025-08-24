@@ -22,7 +22,7 @@ enum Batch {
         try await withThrowingTaskGroup(of: (Int, R).self) { group -> [R] in
             for (index, url) in urls.enumerated() {
                 group.addTask {
-                    (index, try transform(url))
+                    try (index, transform(url))
                 }
             }
             var buffer = [R?](repeating: nil, count: urls.count)

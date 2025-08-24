@@ -17,7 +17,7 @@ extension SKTexture {
     convenience init(imageRawData: ImageRawData) {
         self.init(data: imageRawData.data, size: imageRawData.size, flipped: true)
     }
-    
+
     @MainActor
     static func asyncFrom(contentsOf imageURL: URL) async throws -> SKTexture {
         let image = try await ImageRawData.asyncFrom(contentsOf: imageURL)
@@ -27,7 +27,6 @@ extension SKTexture {
     static func mustCreateFrom(contentsOf imageURL: URL) -> SKTexture {
         SKTexture(contentsOf: imageURL)!
     }
-
 }
 
 protocol SKSizedNode: SKNode {
