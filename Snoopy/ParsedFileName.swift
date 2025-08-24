@@ -111,7 +111,7 @@ struct ParsedFileName {
     }
 
     static func isDecoration<S: StringProtocol>(_ resourceName: S) -> Bool {
-        resourceName.starts(with: "IV") || resourceName.starts(with: "WE")
+        resourceName.starts(with: "VI") || resourceName.starts(with: "WE")
     }
 
     static func isSpecialTransition<S: StringProtocol>(_ resourceName: S) -> Bool {
