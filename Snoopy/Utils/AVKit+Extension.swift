@@ -11,7 +11,7 @@ extension AVPlayerItem {
     private final class KVOWrapper: @unchecked Sendable {
         var observation: NSKeyValueObservation?
     }
-    
+
     func ready() async -> AVPlayerItem {
         await withCheckedContinuation { continuation in
             let wrapper = KVOWrapper()
@@ -29,11 +29,11 @@ extension AVPlayer {
     private final class BoundaryTimeObserver: @unchecked Sendable {
         var observer: Any?
     }
-    
+
     func waitUntil(forTime time: CMTime) async {
         await waitUntil(forTimes: [NSValue(time: time)])
     }
-    
+
     /// waitUntil does nothing but wait for the player reaches the given time.
     /// Once the time is reached, it hands the control back to the process.
     func waitUntil(forTimes times: [NSValue]) async {

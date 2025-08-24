@@ -5,8 +5,8 @@
 //  Created by Yaxin Cheng on 2025-08-19.
 //
 
-import SpriteKit
 import AVKit
+import SpriteKit
 
 final class MaskedVideoNode: SKCropNode, SKSizedNode {
     private let videoNode: SKVideoNode
@@ -17,7 +17,7 @@ final class MaskedVideoNode: SKCropNode, SKSizedNode {
         addChild(videoNode)
     }
     
-    private override init() {
+    override private init() {
         videoNode = SKVideoNode()
         super.init()
     }

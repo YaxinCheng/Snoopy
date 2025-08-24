@@ -12,7 +12,7 @@ struct SnoopyView: View {
     @StateObject private var viewModel = SnoopyViewModel()
     @StateObject private var screenSaverStopObserver = DistributedNotificationObserver(name: .screenSaverWillStop)
     private let scene = SnoopyScene()
-    
+
     var body: some View {
         SpriteView(scene: scene)
             .task {
