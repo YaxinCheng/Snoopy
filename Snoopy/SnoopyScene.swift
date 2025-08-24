@@ -107,7 +107,9 @@ final class SnoopyScene: SKScene {
         } else {
             (AVQueuePlayer(items: playItems), AVQueuePlayer())
         }
-        mainPlayer.actionAtItemEnd = .pause
+        if hasTransition {
+            mainPlayer.actionAtItemEnd = .pause
+        }
         let mainVideoNode = SKVideoNode(avPlayer: mainPlayer).fullscreen(in: self)
         addChild(mainVideoNode)
         imageNode = nil
