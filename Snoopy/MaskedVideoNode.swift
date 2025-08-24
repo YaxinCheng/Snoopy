@@ -35,6 +35,11 @@ final class MaskedVideoNode: SKCropNode, SKSizedNode {
         }
     }
     
+    func unhideAndPlay() {
+        isHidden = false
+        play()
+    }
+
     func play() {
         videoNode.play()
     }

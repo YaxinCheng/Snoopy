@@ -28,22 +28,50 @@ extension AVPlayerItem {
 extension AVPlayer {
     private final class BoundaryTimeObserver: @unchecked Sendable {
         var observer: Any?
+
+        func remove(from player: AVPlayer?) {
+            if let observer = observer {
+                player?.removeTimeObserver(observer)
+                self.observer = nil
+            }
+        }
     }
 
-    func waitUntil(forTime time: CMTime) async {
-        await waitUntil(forTimes: [NSValue(time: time)])
+    private actor ResumeManager {
+        private var continuation: CheckedContinuation<Void, Never>?
+
+        init(continuation: CheckedContinuation<Void, Never>?) {
+            self.continuation = continuation
+        }
+
+        func resume() {
+            continuation?.resume()
+            continuation = nil
+        }
+    }
+
+    func waitUntil(forTime time: CMTime, timeout: TimeInterval) async {
+        await waitUntil(forTimes: [NSValue(time: time)], timeout: timeout)
     }
 
     /// waitUntil does nothing but wait for the player reaches the given time.
     /// Once the time is reached, it hands the control back to the process.
-    func waitUntil(forTimes times: [NSValue]) async {
+    func waitUntil(forTimes times: [NSValue], timeout: TimeInterval) async {
         await withCheckedContinuation { continuation in
             let observer = BoundaryTimeObserver()
-            observer.observer = self.addBoundaryTimeObserver(forTimes: times, queue: .global()) {
-                if let observer = observer.observer {
-                    self.removeTimeObserver(observer)
+            let continuation = ResumeManager(continuation: continuation)
+            let timeoutTask = Task {
+                try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                await continuation.resume()
+                observer.remove(from: self)
+            }
+
+            observer.observer = self.addBoundaryTimeObserver(forTimes: times, queue: .global()) { [weak self] in
+                timeoutTask.cancel()
+                Task {
+                    await continuation.resume()
+                    observer.remove(from: self)
                 }
-                continuation.resume()
             }
         }
     }
