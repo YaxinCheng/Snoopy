@@ -150,7 +150,7 @@ final class SnoopyScene: SKScene {
         _ = await item.ready()
         let insertionTime = Self.calculateMaskInsertionTime(maskFrames: mask.urlsCount, videoDuration: item.duration)
         Log.info("insertionTime: \(insertionTime.seconds)")
-        await mainPlayer.waitUntil(forTime: insertionTime, timeout: item.duration.seconds)
+        await mainPlayer.waitUntil(forTime: insertionTime, timeout: item.duration)
         secondaryVideoNode.isHidden = false
         secondaryVideoNode.play()
         await playMask(cropNode: secondaryVideoNode, maskCache: introMaskCache)
@@ -161,7 +161,7 @@ final class SnoopyScene: SKScene {
         let outroMaskCache = MaskCache(mask: mask, outline: outline)
         _ = await item.ready()
         let insertionTime = Self.calculateMaskInsertionTime(maskFrames: mask.urlsCount, videoDuration: item.duration)
-        await secondaryPlayer.waitUntil(forTime: insertionTime, timeout: item.duration.seconds)
+        await secondaryPlayer.waitUntil(forTime: insertionTime, timeout: item.duration)
         mainVideoNode.play()
         await playMask(cropNode: secondaryVideoNode, maskCache: outroMaskCache)
         secondaryVideoNode.removeFromParent()

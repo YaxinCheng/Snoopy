@@ -50,28 +50,18 @@ extension AVPlayer {
         }
     }
 
-    func waitUntil(forTime time: CMTime, timeout: TimeInterval) async {
-        await waitUntil(forTimes: [NSValue(time: time)], timeout: timeout)
+    func waitUntil(forTime time: CMTime, timeout: CMTime) async {
+        await waitUntil(forTimes: [NSValue(time: time), NSValue(time: timeout)])
     }
 
     /// waitUntil does nothing but wait for the player reaches the given time.
     /// Once the time is reached, it hands the control back to the process.
-    func waitUntil(forTimes times: [NSValue], timeout: TimeInterval) async {
+    private func waitUntil(forTimes times: [NSValue]) async {
         await withCheckedContinuation { continuation in
             let observer = BoundaryTimeObserver()
-            let continuation = ResumeManager(continuation: continuation)
-            let timeoutTask = Task {
-                try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
-                await continuation.resume()
-                observer.remove(from: self)
-            }
-
             observer.observer = self.addBoundaryTimeObserver(forTimes: times, queue: .global()) { [weak self] in
-                timeoutTask.cancel()
-                Task {
-                    await continuation.resume()
-                    observer.remove(from: self)
-                }
+                observer.remove(from: self)
+                continuation.resume()
             }
         }
     }
