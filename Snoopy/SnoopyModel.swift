@@ -15,7 +15,6 @@ private let BACKGROUND_COLOURS: [NSColor] = [
     .systemMint,
     .systemIndigo,
     .systemOrange,
-    .systemPurple,
     .cyan,
 ]
 
