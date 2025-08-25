@@ -97,6 +97,13 @@ final class SnoopyScene: SKScene {
         return houseNode
     }
 
+    /// setupSceneFromVideoClip sets up at most two players (mainPlayer and secondaryPlayer) in different scenarios.
+    /// The secondaryPlayer is at a higher z-level than the mainPlayer.
+    ///
+    /// The scenarios are:
+    /// 1. There are mask and transition, the mainPlayer will play the transition, and the secondaryPlayer will play the dream content.
+    ///    a. mainPlayer will not auto play the next one in this case, to avoid showing the outro transition too early.
+    /// 2. No mask or transition, the mainPlayer will play the content, and no secondaryPlayer.
     private func setupSceneFromVideoClip(_ clip: Clip<URL>, mask: Mask?, transition: Clip<URL>?) {
         let introTransition = OptionalToArray(transition?.intro).map(AVPlayerItem.init(url:))
         let outroTransition = OptionalToArray(transition?.outro).map(AVPlayerItem.init(url:))
@@ -114,13 +121,12 @@ final class SnoopyScene: SKScene {
         addChild(mainVideoNode)
         imageNode = nil
 
-        videoDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: nil).sink { [weak self] notification in
-            guard let item = notification.object as? AVPlayerItem else { return }
-            if item === outroTransition.last || (!hasTransition && item === playItems.last) {
-                Log.info("video animation finished playing: \(item)")
-                self?._didFinishPlaying.send()
-                mainVideoNode.removeFromParent()
-            }
+        let lastVideo = hasTransition ? outroTransition.last : playItems.last
+        videoDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: lastVideo).sink { [weak self] notification in
+            guard let item = notification.object as? AVPlayerItem, item === lastVideo else { return }
+            Log.info("video animation finished playing: \(item)")
+            self?._didFinishPlaying.send()
+            mainVideoNode.removeFromParent()
         }
 
         if let mask = mask { // has transition and mask
