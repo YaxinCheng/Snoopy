@@ -52,10 +52,13 @@ final class SnoopyScene: SKScene {
     func setup(animation: Animation, backgroundColor: NSColor, background: URL?, snoopyHouse: URL, mask: Mask?, transition: Clip<URL>?, decoration: Animation?) async {
         await setupBackgroundAndSnoopyHouse.execute {
             do {
+                async let setupColor = setupColorBackgroundNode(color: backgroundColor)
+                async let setupBackground = setupBackground(background)
+                async let setupSnoopyHouse = setupSnoopyHouse(snoopyHouse)
                 let (colorNode, backgroundNode, houseNode) = try await (
-                    setupColorBackgroundNode(color: backgroundColor),
-                    setupBackground(background),
-                    setupSnoopyHouse(snoopyHouse),
+                    setupColor,
+                    setupBackground,
+                    setupSnoopyHouse,
                 )
                 await MainActor.run {
                     addChild(colorNode)
@@ -71,7 +74,11 @@ final class SnoopyScene: SKScene {
 
         switch animation {
         case .video(let clip):
-            setupSceneFromVideoClip(clip, mask: mask, transition: transition)
+            if ParsedFileName.isDream(clip.name) {
+                setupSceneFromDreamVideoClip(clip, mask: mask!, transition: transition!)
+            } else {
+                setupSceneFromPureVideoClip(clip)
+            }
         case .imageSequence(let clip):
             setUpSceneFromImageSequenceClip(clip, decoration: decoration)
         }
@@ -97,78 +104,71 @@ final class SnoopyScene: SKScene {
         return houseNode
     }
 
-    private func setupSceneFromVideoClip(_ clip: Clip<URL>, mask: Mask?, transition: Clip<URL>?) {
-        let introTransition = OptionalToArray(transition?.intro).map(AVPlayerItem.init(url:))
-        let outroTransition = OptionalToArray(transition?.outro).map(AVPlayerItem.init(url:))
+    /// setupSceneFromPureVideoClip sets up the scene for non-dreaming video clips.
+    private func setupSceneFromPureVideoClip(_ clip: Clip<URL>) {
         let playItems = Self.expandUrls(from: clip).map(AVPlayerItem.init(url:))
-        let hasTransition = !introTransition.isEmpty || !outroTransition.isEmpty
-        let (mainPlayer, secondaryPlayer) = if hasTransition {
-            (AVQueuePlayer(items: introTransition + outroTransition), AVQueuePlayer(items: playItems))
-        } else {
-            (AVQueuePlayer(items: playItems), AVQueuePlayer())
-        }
-        if hasTransition {
-            mainPlayer.actionAtItemEnd = .pause
-        }
-        let mainVideoNode = SKVideoNode(avPlayer: mainPlayer).fullscreen(in: self)
-        addChild(mainVideoNode)
+        let player = AVQueuePlayer(items: playItems)
+        let videoNode = SKVideoNode(avPlayer: player).fullscreen(in: self)
+        addChild(videoNode)
         imageNode = nil
+        videoNode.play()
 
-        videoDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: nil).sink { [weak self] notification in
-            guard let item = notification.object as? AVPlayerItem else { return }
-            if item === outroTransition.last || (!hasTransition && item === playItems.last) {
-                Log.info("video animation finished playing: \(item)")
-                self?._didFinishPlaying.send()
-                mainVideoNode.removeFromParent()
-            }
+        videoDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: playItems.last).sink { [weak self] _ in
+            Log.info("video animation finished playing: \(playItems.last!)")
+            self?._didFinishPlaying.send()
+            videoNode.removeFromParent()
         }
+    }
 
-        if let mask = mask { // has transition and mask
-            let secondaryVideoNode = MaskedVideoNode(videoNode: SKVideoNode(avPlayer: secondaryPlayer).fullscreen(in: self))
-            addChild(secondaryVideoNode)
-            secondaryVideoNode.isHidden = true
+    /// setupSceneFromDreamVideoClip sets up the scene for dreaming video clips.
+    private func setupSceneFromDreamVideoClip(_ clip: Clip<URL>, mask: Mask, transition: Clip<URL>) {
+        let introTransition = OptionalToArray(transition.intro).map(AVPlayerItem.init(url:))
+        let outroTransition = OptionalToArray(transition.outro).map(AVPlayerItem.init(url:))
+        let playItems = Self.expandUrls(from: clip).map(AVPlayerItem.init(url:))
+        let (transitionPlayer, dreamPlayer) =
+            (AVQueuePlayer(items: introTransition + outroTransition), AVQueuePlayer(items: playItems))
+        transitionPlayer.actionAtItemEnd = .pause
+        let transitionVideoNode = SKVideoNode(avPlayer: transitionPlayer).fullscreen(in: self)
+        addChild(transitionVideoNode)
+        imageNode = nil
+        let dreamVideoNode = MaskedVideoNode(videoNode: SKVideoNode(avPlayer: dreamPlayer).fullscreen(in: self))
+        addChild(dreamVideoNode)
+        dreamVideoNode.isHidden = true
 
-            if !introTransition.isEmpty { // has intro transition
-                mainVideoNode.play()
-                Task { [weak self] in
-                    await self?.setupIntroTransition(introTransition.last!, mask: mask.mask.intro!, outline: mask.outline.intro!, mainPlayer: mainPlayer, secondaryVideoNode: secondaryVideoNode)
-                }
-            } else { // no intro, direct to dream
-                secondaryVideoNode.unhideAndPlay()
-            }
-
+        if !introTransition.isEmpty { // has intro transition
+            transitionVideoNode.play()
+            let introMaskCache = MaskCache(mask: mask.mask.intro!, outline: mask.outline.intro!)
             Task { [weak self] in
-                await self?.setupOutroTransition(playItems.last!, mask: mask.mask.outro!, outline: mask.outline.outro!, secondaryPlayer: secondaryPlayer, mainVideoNode: mainVideoNode, secondaryVideoNode: secondaryVideoNode)
+                let item = await introTransition.last!.ready()
+                let insertionTime = Self.calculateMaskInsertionTime(maskFrames: mask.mask.intro!.urlsCount, videoDuration: item.duration)
+                await transitionPlayer.waitUntil(item: item, forTime: insertionTime, timeout: item.duration.seconds)
+                dreamVideoNode.unhideAndPlay()
+                await self?.playMask(cropNode: dreamVideoNode, maskCache: introMaskCache)
+                transitionPlayer.advanceToNextItem()
             }
-        } else { // no transition
-            mainVideoNode.play()
+        } else { // no intro, direct to dream
+            dreamVideoNode.unhideAndPlay()
         }
-    }
+        let outroMaskCache = MaskCache(mask: mask.mask.outro!, outline: mask.outline.outro!)
+        Task { [weak self] in
+            let item = await playItems.last!.ready()
+            let insertionTime = Self.calculateMaskInsertionTime(maskFrames: mask.mask.outro!.urlsCount, videoDuration: item.duration)
+            await dreamPlayer.waitUntil(item: item, forTime: insertionTime, timeout: item.duration.seconds)
+            transitionPlayer.play()
+            await self?.playMask(cropNode: dreamVideoNode, maskCache: outroMaskCache)
+            dreamVideoNode.removeFromParent()
+        }
 
-    private func setupIntroTransition(_ item: AVPlayerItem, mask: ImageSequence, outline: ImageSequence, mainPlayer: AVQueuePlayer, secondaryVideoNode: MaskedVideoNode) async {
-        let introMaskCache = MaskCache(mask: mask, outline: outline)
-        _ = await item.ready()
-        let insertionTime = Self.calculateMaskInsertionTime(maskFrames: mask.urlsCount, videoDuration: item.duration)
-        Log.info("insertionTime: \(insertionTime.seconds)")
-        await mainPlayer.waitUntil(forTime: insertionTime, timeout: item.duration)
-        secondaryVideoNode.isHidden = false
-        secondaryVideoNode.play()
-        await playMask(cropNode: secondaryVideoNode, maskCache: introMaskCache)
-        mainPlayer.advanceToNextItem()
-    }
-
-    private func setupOutroTransition(_ item: AVPlayerItem, mask: ImageSequence, outline: ImageSequence, secondaryPlayer: AVQueuePlayer, mainVideoNode: SKVideoNode, secondaryVideoNode: some SKCropNode) async {
-        let outroMaskCache = MaskCache(mask: mask, outline: outline)
-        _ = await item.ready()
-        let insertionTime = Self.calculateMaskInsertionTime(maskFrames: mask.urlsCount, videoDuration: item.duration)
-        await secondaryPlayer.waitUntil(forTime: insertionTime, timeout: item.duration)
-        mainVideoNode.play()
-        await playMask(cropNode: secondaryVideoNode, maskCache: outroMaskCache)
-        secondaryVideoNode.removeFromParent()
+        videoDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: outroTransition.last).sink { [weak self] _ in
+            Log.info("video animation finished playing: \(outroTransition.last!)")
+            self?._didFinishPlaying.send()
+            transitionVideoNode.removeFromParent()
+        }
     }
 
     private static func calculateMaskInsertionTime(maskFrames: Int, videoDuration: CMTime) -> CMTime {
-        let maskTime = CMTimeMakeWithSeconds(Double(maskFrames) * MASK_INTERVAL, preferredTimescale: 600)
+        // magic number 2: to delay the playback of mask.
+        let maskTime = CMTimeMakeWithSeconds(Double(maskFrames - 2) * MASK_INTERVAL, preferredTimescale: 600)
         return CMTimeSubtract(videoDuration, maskTime)
     }
 
