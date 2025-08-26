@@ -13,7 +13,7 @@ private let HOUSE_SCALE: CGFloat = 720 / 1080
 private let HOUSE_Y_OFFSET: CGFloat = 180 / 1080
 private let LOOP_REPEAT_LIMIT: UInt = 8
 private let IMAGES_SEQ_INTERVAL: TimeInterval = 0.06
-private let MASK_INTERVAL: TimeInterval = 0.04
+private let MASK_INTERVAL: TimeInterval = 0.06
 
 final class SnoopyScene: SKScene {
     /// imageNode is the node for image sequence animations.
@@ -52,10 +52,13 @@ final class SnoopyScene: SKScene {
     func setup(animation: Animation, backgroundColor: NSColor, background: URL?, snoopyHouse: URL, mask: Mask?, transition: Clip<URL>?, decoration: Animation?) async {
         await setupBackgroundAndSnoopyHouse.execute {
             do {
+                async let setupColor = setupColorBackgroundNode(color: backgroundColor)
+                async let setupBackground = setupBackground(background)
+                async let setupSnoopyHouse = setupSnoopyHouse(snoopyHouse)
                 let (colorNode, backgroundNode, houseNode) = try await (
-                    setupColorBackgroundNode(color: backgroundColor),
-                    setupBackground(background),
-                    setupSnoopyHouse(snoopyHouse),
+                    setupColor,
+                    setupBackground,
+                    setupSnoopyHouse,
                 )
                 await MainActor.run {
                     addChild(colorNode)
@@ -110,12 +113,8 @@ final class SnoopyScene: SKScene {
         imageNode = nil
         videoNode.play()
 
-        videoDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: playItems.last).sink { [weak self] notification in
-            guard
-                let item = notification.object as? AVPlayerItem,
-                item === playItems.last
-            else { return }
-            Log.info("video animation finished playing: \(item)")
+        videoDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: playItems.last).sink { [weak self] _ in
+            Log.info("video animation finished playing: \(playItems.last!)")
             self?._didFinishPlaying.send()
             videoNode.removeFromParent()
         }
@@ -160,18 +159,16 @@ final class SnoopyScene: SKScene {
             dreamVideoNode.removeFromParent()
         }
 
-        videoDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: nil).sink { [weak self] notification in
-            guard let item = notification.object as? AVPlayerItem else { return }
-            if item === outroTransition.last {
-                Log.info("video animation finished playing: \(item)")
-                self?._didFinishPlaying.send()
-                transitionVideoNode.removeFromParent()
-            }
+        videoDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: outroTransition.last).sink { [weak self] _ in
+            Log.info("video animation finished playing: \(outroTransition.last!)")
+            self?._didFinishPlaying.send()
+            transitionVideoNode.removeFromParent()
         }
     }
 
     private static func calculateMaskInsertionTime(maskFrames: Int, videoDuration: CMTime) -> CMTime {
-        let maskTime = CMTimeMakeWithSeconds(Double(maskFrames) * MASK_INTERVAL, preferredTimescale: 600)
+        // magic number 2: to delay the playback of mask.
+        let maskTime = CMTimeMakeWithSeconds(Double(maskFrames - 2) * MASK_INTERVAL, preferredTimescale: 600)
         return CMTimeSubtract(videoDuration, maskTime)
     }
 
