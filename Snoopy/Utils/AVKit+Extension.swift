@@ -7,11 +7,11 @@
 
 import AVKit
 
-extension AVPlayerItem {
-    private final class KVOWrapper: @unchecked Sendable {
-        var observation: NSKeyValueObservation?
-    }
+fileprivate final class KVOWrapper: @unchecked Sendable {
+    var observation: NSKeyValueObservation?
+}
 
+extension AVPlayerItem {
     func ready() async -> AVPlayerItem {
         await withCheckedContinuation { continuation in
             let wrapper = KVOWrapper()
@@ -50,18 +50,41 @@ extension AVPlayer {
         }
     }
 
-    func waitUntil(forTime time: CMTime, timeout: CMTime) async {
-        await waitUntil(forTimes: [NSValue(time: time), NSValue(time: timeout)])
+    func waitUntil(item: AVPlayerItem, forTime time: CMTime, timeout: TimeInterval) async {
+        await waitUntil(item: item, forTimes: [NSValue(time: time)], timeout: timeout)
     }
 
     /// waitUntil does nothing but wait for the player reaches the given time.
     /// Once the time is reached, it hands the control back to the process.
-    private func waitUntil(forTimes times: [NSValue]) async {
+    private func waitUntil(item: AVPlayerItem, forTimes times: [NSValue], timeout: TimeInterval) async {
         await withCheckedContinuation { continuation in
             let observer = BoundaryTimeObserver()
-            observer.observer = self.addBoundaryTimeObserver(forTimes: times, queue: .global()) { [weak self] in
+            let continuation = ResumeManager(continuation: continuation)
+            let timeoutTask = Task { [weak self] in
+                await self?.waitForItem(item)
+                try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                await continuation.resume()
                 observer.remove(from: self)
-                continuation.resume()
+            }
+
+            observer.observer = self.addBoundaryTimeObserver(forTimes: times, queue: .global()) { [weak self] in
+                timeoutTask.cancel()
+                Task {
+                    await continuation.resume()
+                    observer.remove(from: self)
+                }
+            }
+        }
+    }
+    
+    private func waitForItem(_ item: AVPlayerItem) async {
+        await withCheckedContinuation { continuation in
+            let wrapper = KVOWrapper()
+            wrapper.observation = self.observe(\.currentItem, options: [.initial, .new]) { player, _ in
+                if player.currentItem === item {
+                    wrapper.observation?.invalidate()
+                    continuation.resume()
+                }
             }
         }
     }
