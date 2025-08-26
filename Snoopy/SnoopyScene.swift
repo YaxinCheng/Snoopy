@@ -135,41 +135,36 @@ final class SnoopyScene: SKScene {
         addChild(dreamVideoNode)
         dreamVideoNode.isHidden = true
 
+        let outroMaskCache = MaskCache(mask: mask.mask.outro!, outline: mask.outline.outro!)
+        var introMaskCache: MaskCache?
         if !introTransition.isEmpty { // has intro transition
+            introMaskCache = MaskCache(mask: mask.mask.intro!, outline: mask.outline.intro!)
             transitionVideoNode.play()
-            let introMaskCache = MaskCache(mask: mask.mask.intro!, outline: mask.outline.intro!)
-            Task { [weak self] in
-                let item = await introTransition.last!.ready()
-                let insertionTime = Self.calculateMaskInsertionTime(maskFrames: mask.mask.intro!.urlsCount, videoDuration: item.duration)
-                await transitionPlayer.waitUntil(item: item, forTime: insertionTime, timeout: item.duration.seconds)
-                dreamVideoNode.unhideAndPlay()
-                await self?.playMask(cropNode: dreamVideoNode, maskCache: introMaskCache)
-                transitionPlayer.advanceToNextItem()
-            }
         } else { // no intro, direct to dream
             dreamVideoNode.unhideAndPlay()
         }
-        let outroMaskCache = MaskCache(mask: mask.mask.outro!, outline: mask.outline.outro!)
-        Task { [weak self] in
-            let item = await playItems.last!.ready()
-            let insertionTime = Self.calculateMaskInsertionTime(maskFrames: mask.mask.outro!.urlsCount, videoDuration: item.duration)
-            await dreamPlayer.waitUntil(item: item, forTime: insertionTime, timeout: item.duration.seconds)
-            transitionPlayer.play()
-            await self?.playMask(cropNode: dreamVideoNode, maskCache: outroMaskCache)
-            dreamVideoNode.removeFromParent()
-        }
 
-        videoDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: outroTransition.last).sink { [weak self] _ in
-            Log.info("video animation finished playing: \(outroTransition.last!)")
-            self?._didFinishPlaying.send()
-            transitionVideoNode.removeFromParent()
+        videoDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: nil).sink { [weak self] notification in
+            guard let item = notification.object as? AVPlayerItem else { return }
+            if item === outroTransition.last {
+                Log.info("video animation finished playing: \(outroTransition.last!)")
+                self?._didFinishPlaying.send()
+                transitionVideoNode.removeFromParent()
+            } else if item === introTransition.last {
+                Task {
+                    dreamVideoNode.isHidden = false
+                    await self?.playMask(cropNode: dreamVideoNode, maskCache: introMaskCache!)
+                    dreamVideoNode.play()
+                    transitionPlayer.advanceToNextItem()
+                }
+            } else if item === playItems.last {
+                Task {
+                    transitionPlayer.play()
+                    await self?.playMask(cropNode: dreamVideoNode, maskCache: outroMaskCache)
+                    dreamVideoNode.removeFromParent()
+                }
+            }
         }
-    }
-
-    private static func calculateMaskInsertionTime(maskFrames: Int, videoDuration: CMTime) -> CMTime {
-        // magic number 2: to delay the playback of mask.
-        let maskTime = CMTimeMakeWithSeconds(Double(maskFrames - 2) * MASK_INTERVAL, preferredTimescale: 600)
-        return CMTimeSubtract(videoDuration, maskTime)
     }
 
     private func playMask(cropNode: some SKCropNode, maskCache: MaskCache) async {
