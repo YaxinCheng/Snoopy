@@ -72,6 +72,7 @@ final class SnoopyScene: SKScene {
             }
         }
 
+        cleanup()
         switch animation {
         case .video(let clip):
             if ParsedFileName.isDream(clip.name) {
@@ -113,10 +114,10 @@ final class SnoopyScene: SKScene {
         imageNode = nil
         videoNode.play()
 
-        videoDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: playItems.last).sink { [weak self] _ in
+        videoDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: playItems.last).sink { [weak self, weak videoNode] _ in
             Log.info("video animation finished playing: \(playItems.last!)")
             self?._didFinishPlaying.send()
-            videoNode.removeFromParent()
+            videoNode?.removeFromParent()
         }
     }
 
@@ -125,14 +126,16 @@ final class SnoopyScene: SKScene {
         let introTransition = OptionalToArray(transition.intro).map(AVPlayerItem.init(url:))
         let outroTransition = OptionalToArray(transition.outro).map(AVPlayerItem.init(url:))
         let playItems = Self.expandUrls(from: clip).map(AVPlayerItem.init(url:))
-        let (transitionPlayer, dreamPlayer) =
-            (AVQueuePlayer(items: introTransition + outroTransition), AVQueuePlayer(items: playItems))
+        let transitionPlayer = AVQueuePlayer(items: introTransition + outroTransition)
         transitionPlayer.actionAtItemEnd = .pause
         let transitionVideoNode = SKVideoNode(avPlayer: transitionPlayer).fullscreen(in: self)
         addChild(transitionVideoNode)
         imageNode = nil
-        let dreamVideoNode = MaskedVideoNode(videoNode: SKVideoNode(avPlayer: dreamPlayer).fullscreen(in: self))
+
+        let dreamVideoNode = MaskedVideoNode(videoNode:
+            SKVideoNode(avPlayer: AVQueuePlayer(items: playItems)).fullscreen(in: self))
         addChild(dreamVideoNode)
+        dreamVideoNode.zPosition = 11
         dreamVideoNode.isHidden = true
 
         let outroMaskCache = MaskCache(mask: mask.mask.outro!, outline: mask.outline.outro!)
@@ -144,24 +147,29 @@ final class SnoopyScene: SKScene {
             dreamVideoNode.unhideAndPlay()
         }
 
-        videoDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: nil).sink { [weak self] notification in
+        videoDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: nil).sink {
+            [weak self, weak transitionPlayer, weak transitionVideoNode, weak dreamVideoNode] notification in
             guard let item = notification.object as? AVPlayerItem else { return }
             if item === outroTransition.last {
-                Log.info("video animation finished playing: \(outroTransition.last!)")
+                Log.info("video animation finished playing: \(item)")
                 self?._didFinishPlaying.send()
-                transitionVideoNode.removeFromParent()
+                transitionVideoNode?.removeFromParent()
             } else if item === introTransition.last {
                 Task {
-                    dreamVideoNode.isHidden = false
-                    await self?.playMask(cropNode: dreamVideoNode, maskCache: introMaskCache!)
-                    dreamVideoNode.play()
-                    transitionPlayer.advanceToNextItem()
+                    dreamVideoNode?.isHidden = false
+                    if dreamVideoNode != nil {
+                        await self?.playMask(cropNode: dreamVideoNode!, maskCache: introMaskCache!)
+                    }
+                    dreamVideoNode?.play()
+                    transitionPlayer?.advanceToNextItem()
                 }
             } else if item === playItems.last {
                 Task {
-                    transitionPlayer.play()
-                    await self?.playMask(cropNode: dreamVideoNode, maskCache: outroMaskCache)
-                    dreamVideoNode.removeFromParent()
+                    transitionVideoNode?.play()
+                    if dreamVideoNode != nil {
+                        await self?.playMask(cropNode: dreamVideoNode!, maskCache: outroMaskCache)
+                    }
+                    dreamVideoNode?.removeFromParent()
                 }
             }
         }
@@ -170,7 +178,7 @@ final class SnoopyScene: SKScene {
     private func playMask(cropNode: some SKCropNode, maskCache: MaskCache) async {
         Log.info("setting up mask and outline")
         cropNode.maskNode = maskCache.maskNode.fullscreen(in: self)
-        let outlineNode = AnimatedImageNode(textures: maskCache.outlineTextures).fullscreen(in: self)
+        let outlineNode = maskCache.outlineNode.fullscreen(in: self)
         addChild(outlineNode)
         async let playMask: ()? = (cropNode.maskNode as? AnimatedImageNode)?.play(timePerFrame: MASK_INTERVAL)
         async let playOutline: () = outlineNode.play(timePerFrame: MASK_INTERVAL)
@@ -185,10 +193,10 @@ final class SnoopyScene: SKScene {
         imageNode = AnimatedImageNode(contentsOf: Self.expandUrls(from: clip)).fullscreen(in: self)
         addChild(imageNode!)
         var decorationNode: SKVideoNode?
-        Task {
-            await imageNode?.play(timePerFrame: IMAGES_SEQ_INTERVAL)
-            self._didFinishPlaying.send()
+        Task { [weak self, weak decorationNode] in
+            await self?.imageNode?.play(timePerFrame: IMAGES_SEQ_INTERVAL)
             decorationNode?.removeFromParent()
+            self?._didFinishPlaying.send()
         }
 
         if let decoration = decoration {
@@ -196,6 +204,7 @@ final class SnoopyScene: SKScene {
             let decoItems = Self.expandUrls(from: decoration.unwrapToVideo()).map(AVPlayerItem.init(url:))
             decorationNode = SKVideoNode(avPlayer: AVQueuePlayer(items: decoItems)).fullscreen(in: self)
             addChild(decorationNode!)
+            decorationNode?.zPosition = 10
             decorationNode?.play()
             decorationDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: decoItems.last).sink { notification in
                 if notification.object as? AVPlayerItem === decoItems.last {
@@ -220,6 +229,11 @@ final class SnoopyScene: SKScene {
         result.append(contentsOf: OptionalToArray(imageSequenceClip.outro?.urls))
         return result
     }
+
+    private func cleanup() {
+        videoDidFinishPlayingObserver = nil
+        decorationDidFinishPlayingObserver = nil
+    }
 }
 
 @MainActor
@@ -227,22 +241,21 @@ final class MaskCache {
     private let maskSource: [URL]
     private let outlineSource: [URL]
     private var _maskNode: AnimatedImageNode?
-    private var _outlineTexture: [SKTexture]?
+    private var _outlineNode: AnimatedImageNode?
 
     init(mask: ImageSequence, outline: ImageSequence) {
         let maskURLs = mask.urls
-        maskSource = maskURLs
+        self.maskSource = maskURLs
         let outlineURLs = outline.urls
-        outlineSource = outlineURLs
+        self.outlineSource = outlineURLs
         Task.detached {
             do {
-                let (maskImages, outlineImages) = try await (
-                    Batch.asyncLoad(urls: maskURLs) { try ImageRawData(contentsOf: $0) },
-                    Batch.asyncLoad(urls: outlineURLs) { try ImageRawData(contentsOf: $0) }
-                )
+                async let maskNodeLoad = AnimatedImageNode.asyncCreate(contentsOf: maskURLs)
+                async let outlineNodeLoad = AnimatedImageNode.asyncCreate(contentsOf: outlineURLs)
+                let (maskNode, outlineNode) = try await (maskNodeLoad, outlineNodeLoad)
                 await MainActor.run { [weak self] in
-                    self?._maskNode = AnimatedImageNode(textures: maskImages.map { SKTexture(imageRawData: $0) })
-                    self?._outlineTexture = outlineImages.map { SKTexture(imageRawData: $0) }
+                    self?._maskNode = maskNode
+                    self?._outlineNode = outlineNode
                 }
             } catch {
                 Log.error("failed to load mask / layout images: \(error)")
@@ -258,11 +271,11 @@ final class MaskCache {
         return _maskNode!
     }
 
-    var outlineTextures: [SKTexture] {
-        if _outlineTexture == nil {
-            Log.notice("_outlineTexture was read before being loaded")
-            _outlineTexture = Batch.syncLoad(urls: outlineSource, transform: SKTexture.mustCreateFrom(contentsOf:))
+    var outlineNode: AnimatedImageNode {
+        if _outlineNode == nil {
+            Log.notice("_outlineNode was read before being loaded")
+            _outlineNode = AnimatedImageNode(contentsOf: outlineSource)
         }
-        return _outlineTexture!
+        return _outlineNode!
     }
 }

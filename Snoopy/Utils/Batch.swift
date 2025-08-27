@@ -8,7 +8,7 @@
 import Foundation
 
 enum Batch {
-    static func syncLoad<R>(urls: [URL], transform: @escaping @Sendable (URL) -> R) -> [R] {
+    static func syncLoad<R>(urls: ArraySlice<URL>, transform: @escaping @Sendable (URL) -> R) -> [R] {
         Array(unsafeUninitializedCapacity: urls.count) { buffer, initializedCount in
             let baseAddress = buffer.baseAddress!
             DispatchQueue.concurrentPerform(iterations: urls.count) { index in
@@ -18,7 +18,7 @@ enum Batch {
         }
     }
 
-    static func asyncLoad<R: Sendable>(urls: [URL], transform: @escaping @Sendable (URL) throws -> R) async rethrows -> [R] {
+    static func asyncLoad<R: Sendable>(urls: ArraySlice<URL>, transform: @escaping @Sendable (URL) throws -> R) async rethrows -> [R] {
         try await withThrowingTaskGroup(of: (Int, R).self) { group -> [R] in
             for (index, url) in urls.enumerated() {
                 group.addTask {
