@@ -135,6 +135,7 @@ final class SnoopyScene: SKScene {
         let dreamVideoNode = MaskedVideoNode(videoNode:
             SKVideoNode(avPlayer: AVQueuePlayer(items: playItems)).fullscreen(in: self))
         addChild(dreamVideoNode)
+        dreamVideoNode.zPosition = 11
         dreamVideoNode.isHidden = true
 
         let outroMaskCache = MaskCache(mask: mask.mask.outro!, outline: mask.outline.outro!)
@@ -177,7 +178,7 @@ final class SnoopyScene: SKScene {
     private func playMask(cropNode: some SKCropNode, maskCache: MaskCache) async {
         Log.info("setting up mask and outline")
         cropNode.maskNode = maskCache.maskNode.fullscreen(in: self)
-        let outlineNode = AnimatedImageNode(textures: maskCache.outlineTextures).fullscreen(in: self)
+        let outlineNode = maskCache.outlineNode.fullscreen(in: self)
         addChild(outlineNode)
         async let playMask: ()? = (cropNode.maskNode as? AnimatedImageNode)?.play(timePerFrame: MASK_INTERVAL)
         async let playOutline: () = outlineNode.play(timePerFrame: MASK_INTERVAL)
@@ -194,8 +195,8 @@ final class SnoopyScene: SKScene {
         var decorationNode: SKVideoNode?
         Task { [weak self, weak decorationNode] in
             await self?.imageNode?.play(timePerFrame: IMAGES_SEQ_INTERVAL)
-            self?._didFinishPlaying.send()
             decorationNode?.removeFromParent()
+            self?._didFinishPlaying.send()
         }
 
         if let decoration = decoration {
@@ -203,6 +204,7 @@ final class SnoopyScene: SKScene {
             let decoItems = Self.expandUrls(from: decoration.unwrapToVideo()).map(AVPlayerItem.init(url:))
             decorationNode = SKVideoNode(avPlayer: AVQueuePlayer(items: decoItems)).fullscreen(in: self)
             addChild(decorationNode!)
+            decorationNode?.zPosition = 10
             decorationNode?.play()
             decorationDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: decoItems.last).sink { notification in
                 if notification.object as? AVPlayerItem === decoItems.last {
@@ -239,28 +241,28 @@ final class MaskCache {
     private let maskSource: [URL]
     private let outlineSource: [URL]
     private var _maskNode: AnimatedImageNode?
-    private var _outlineTexture: [SKTexture]?
+    private var _outlineNode: AnimatedImageNode?
 
     init(mask: ImageSequence, outline: ImageSequence) {
         let maskURLs = mask.urls
-        maskSource = maskURLs
+        self.maskSource = maskURLs
         let outlineURLs = outline.urls
-        outlineSource = outlineURLs
+        self.outlineSource = outlineURLs
         Task.detached {
             do {
-                async let maskImagesLoad = Batch.asyncLoad(urls: maskURLs) { try ImageRawData(contentsOf: $0) }
-                async let outlineImagesLoad = Batch.asyncLoad(urls: outlineURLs) { try ImageRawData(contentsOf: $0) }
-                let (maskImages, outlineImages) = try await (maskImagesLoad, outlineImagesLoad)
+                async let maskNodeLoad = AnimatedImageNode.asyncCreate(contentsOf: maskURLs)
+                async let outlineNodeLoad = AnimatedImageNode.asyncCreate(contentsOf: outlineURLs)
+                let (maskNode, outlineNode) = try await (maskNodeLoad, outlineNodeLoad)
                 await MainActor.run { [weak self] in
-                    self?._maskNode = AnimatedImageNode(textures: maskImages.map { SKTexture(imageRawData: $0) })
-                    self?._outlineTexture = outlineImages.map { SKTexture(imageRawData: $0) }
+                    self?._maskNode = maskNode
+                    self?._outlineNode = outlineNode
                 }
             } catch {
                 Log.error("failed to load mask / layout images: \(error)")
             }
         }
     }
-    
+
     var maskNode: AnimatedImageNode {
         if _maskNode == nil {
             Log.notice("_maskNode was read before being loaded")
@@ -269,11 +271,11 @@ final class MaskCache {
         return _maskNode!
     }
 
-    var outlineTextures: [SKTexture] {
-        if _outlineTexture == nil {
-            Log.notice("_outlineTexture was read before being loaded")
-            _outlineTexture = Batch.syncLoad(urls: outlineSource, transform: SKTexture.mustCreateFrom(contentsOf:))
+    var outlineNode: AnimatedImageNode {
+        if _outlineNode == nil {
+            Log.notice("_outlineNode was read before being loaded")
+            _outlineNode = AnimatedImageNode(contentsOf: outlineSource)
         }
-        return _outlineTexture!
+        return _outlineNode!
     }
 }
