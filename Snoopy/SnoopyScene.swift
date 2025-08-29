@@ -76,12 +76,12 @@ final class SnoopyScene: SKScene {
         switch animation {
         case .video(let clip):
             if ParsedFileName.isDream(clip.name) {
-                setupSceneFromDreamVideoClip(clip, mask: mask!, transition: transition!)
+                await setupSceneFromDreamVideoClip(clip, mask: mask!, transition: transition!)
             } else {
-                setupSceneFromPureVideoClip(clip)
+                await setupSceneFromPureVideoClip(clip)
             }
         case .imageSequence(let clip):
-            setUpSceneFromImageSequenceClip(clip, decoration: decoration)
+            await setUpSceneFromImageSequenceClip(clip, decoration: decoration)
         }
     }
 
@@ -106,8 +106,8 @@ final class SnoopyScene: SKScene {
     }
 
     /// setupSceneFromPureVideoClip sets up the scene for non-dreaming video clips.
-    private func setupSceneFromPureVideoClip(_ clip: Clip<URL>) {
-        let playItems = Self.expandUrls(from: clip).map(AVPlayerItem.init(url:))
+    private func setupSceneFromPureVideoClip(_ clip: Clip<URL>) async {
+        let playItems = await Batch.asyncLoad(urls: Self.expandUrls(from: clip), transform: AVPlayerItem.load(url:))
         let player = AVQueuePlayer(items: playItems)
         let videoNode = SKVideoNode(avPlayer: player).fullscreen(in: self)
         addChild(videoNode)
@@ -122,10 +122,11 @@ final class SnoopyScene: SKScene {
     }
 
     /// setupSceneFromDreamVideoClip sets up the scene for dreaming video clips.
-    private func setupSceneFromDreamVideoClip(_ clip: Clip<URL>, mask: Mask, transition: Clip<URL>) {
-        let introTransition = OptionalToArray(transition.intro).map(AVPlayerItem.init(url:))
-        let outroTransition = OptionalToArray(transition.outro).map(AVPlayerItem.init(url:))
-        let playItems = Self.expandUrls(from: clip).map(AVPlayerItem.init(url:))
+    private func setupSceneFromDreamVideoClip(_ clip: Clip<URL>, mask: Mask, transition: Clip<URL>) async {
+        async let introTransitionLoad = OptionalToArray(transition.intro.asyncMap(AVPlayerItem.load(url:)))
+        async let outroTransitionLoad = OptionalToArray(transition.outro.asyncMap(AVPlayerItem.load(url:)))
+        async let playItemsLoad = Batch.asyncLoad(urls: Self.expandUrls(from: clip), transform: AVPlayerItem.load(url:))
+        let (introTransition, outroTransition, playItems) = await (introTransitionLoad, outroTransitionLoad, playItemsLoad)
         let transitionPlayer = AVQueuePlayer(items: introTransition + outroTransition)
         transitionPlayer.actionAtItemEnd = .pause
         let transitionVideoNode = SKVideoNode(avPlayer: transitionPlayer).fullscreen(in: self)
@@ -189,25 +190,28 @@ final class SnoopyScene: SKScene {
         outlineNode.removeFromParent()
     }
 
-    private func setUpSceneFromImageSequenceClip(_ clip: Clip<ImageSequence>, decoration: Animation?) {
-        imageNode = AnimatedImageNode(contentsOf: Self.expandUrls(from: clip)).fullscreen(in: self)
-        addChild(imageNode!)
+    private func setUpSceneFromImageSequenceClip(_ clip: Clip<ImageSequence>, decoration: Animation?) async {
+        async let imageNodeLoad = AnimatedImageNode.asyncCreate(contentsOf: Self.expandUrls(from: clip)).fullscreen(in: self)
+        let decorationURLs = decoration.map { Self.expandUrls(from: $0.unwrapToVideo()) }
+        async let decorationItemsLoad = Batch.asyncLoad(urls: decorationURLs ?? [], transform: AVPlayerItem.load(url:))
+        let (imageNode, decorationItems) = await (imageNodeLoad, decorationItemsLoad)
+        self.imageNode = imageNode
+        addChild(imageNode)
         var decorationNode: SKVideoNode?
-        Task { [weak self, weak decorationNode] in
+        Task { [weak self, decorationNode] in
             await self?.imageNode?.play(timePerFrame: IMAGES_SEQ_INTERVAL)
             decorationNode?.removeFromParent()
             self?._didFinishPlaying.send()
         }
 
-        if let decoration = decoration {
-            Log.debug("decoration triggered: \(decoration.name)")
-            let decoItems = Self.expandUrls(from: decoration.unwrapToVideo()).map(AVPlayerItem.init(url:))
-            decorationNode = SKVideoNode(avPlayer: AVQueuePlayer(items: decoItems)).fullscreen(in: self)
+        if !decorationItems.isEmpty {
+            Log.debug("decoration triggered: \(decoration!.name)")
+            decorationNode = SKVideoNode(avPlayer: AVQueuePlayer(items: decorationItems)).fullscreen(in: self)
             addChild(decorationNode!)
             decorationNode?.zPosition = 10
             decorationNode?.play()
-            decorationDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: decoItems.last).sink { notification in
-                if notification.object as? AVPlayerItem === decoItems.last {
+            decorationDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: decorationItems.last).sink { [weak decorationNode] notification in
+                if notification.object as? AVPlayerItem === decorationItems.last {
                     decorationNode?.removeFromParent()
                 }
             }
@@ -244,21 +248,15 @@ final class MaskCache {
     private var _outlineNode: AnimatedImageNode?
 
     init(mask: ImageSequence, outline: ImageSequence) {
-        let maskURLs = mask.urls
-        self.maskSource = maskURLs
-        let outlineURLs = outline.urls
-        self.outlineSource = outlineURLs
+        self.maskSource = mask.urls
+        self.outlineSource = outline.urls
         Task.detached {
-            do {
-                async let maskNodeLoad = AnimatedImageNode.asyncCreate(contentsOf: maskURLs)
-                async let outlineNodeLoad = AnimatedImageNode.asyncCreate(contentsOf: outlineURLs)
-                let (maskNode, outlineNode) = try await (maskNodeLoad, outlineNodeLoad)
-                await MainActor.run { [weak self] in
-                    self?._maskNode = maskNode
-                    self?._outlineNode = outlineNode
-                }
-            } catch {
-                Log.error("failed to load mask / layout images: \(error)")
+            async let maskNodeLoad = AnimatedImageNode.asyncCreate(contentsOf: mask.urls)
+            async let outlineNodeLoad = AnimatedImageNode.asyncCreate(contentsOf: outline.urls)
+            let (maskNode, outlineNode) = await (maskNodeLoad, outlineNodeLoad)
+            await MainActor.run { [weak self] in
+                self?._maskNode = maskNode
+                self?._outlineNode = outlineNode
             }
         }
     }

@@ -27,16 +27,15 @@ final class AnimatedImageNode: SKSpriteNode {
         self.init(urls: resources, firstBatchOfTextures: Batch.syncLoad(urls: resources[..<Self.BATCH_SIZE], transform: SKTexture.mustCreateFrom(contentsOf:)))
     }
 
-    static func asyncCreate(contentsOf resources: [URL]) async throws -> AnimatedImageNode {
+    static func asyncCreate(contentsOf resources: [URL]) async -> AnimatedImageNode {
         #if DEBUG
         guard !resources.isEmpty else {
             Log.fault("Empty resources for AnimatedImageNode is not allowed")
         }
         #endif
         Log.debug("AnimatedImageNode created with resources: [\(resources.lazy.map(\.lastPathComponent).joined(separator: ", "))]")
-        return try await Task.detached {
-            let images = try await Batch.asyncLoad(urls: resources[..<Self.BATCH_SIZE]) { try ImageRawData(contentsOf: $0) }
-            let textures = images.map { SKTexture(imageRawData: $0) }
+        return await Task.detached {
+            let textures = await Batch.syncLoad(urls: resources[..<Self.BATCH_SIZE], transform: SKTexture.mustCreateFrom(contentsOf:))
             return await MainActor.run {
                 AnimatedImageNode(urls: resources, firstBatchOfTextures: textures)
             }

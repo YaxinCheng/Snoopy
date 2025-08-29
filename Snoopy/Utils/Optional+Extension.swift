@@ -17,3 +17,12 @@ func OptionalToArray<T>(_ value: T?) -> [T] {
     }
     return [value]
 }
+
+extension Optional {
+    func asyncMap<T>(_ transform: @escaping (Wrapped) async throws -> T) async rethrows -> T? {
+        if let self {
+            return try await transform(self)
+        }
+        return nil
+    }
+}

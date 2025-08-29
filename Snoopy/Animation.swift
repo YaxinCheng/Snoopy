@@ -89,9 +89,9 @@ extension Animation: CustomDebugStringConvertible {
     var debugDescription: String {
         switch self {
         case .imageSequence(let imageSequence):
-            return "{name: \(imageSequence.name), intro: \(imageSequence.intro?.urls.first?.lastPathComponent ?? "nil"), loop: \(imageSequence.loop?.urls.first?.lastPathComponent ?? "nil"), outro: \(imageSequence.outro?.urls.first?.lastPathComponent ?? "nil")}"
+            return "{name: \(imageSequence.name), intro: \(String(describing: imageSequence.intro?.urls.first?.lastPathComponent)), loop: \(String(describing: imageSequence.loop?.urls.first?.lastPathComponent)), outro: \(String(describing: imageSequence.outro?.urls.first?.lastPathComponent))}"
         case .video(let video):
-            return "{name: \(video.name), intro: \(video.intro?.lastPathComponent ?? "nil"), loop: \(video.loop?.lastPathComponent ?? "nil"), outro: \(video.outro?.lastPathComponent ?? "nil")}"
+            return "{name: \(video.name), intro: \(String(describing: video.intro?.lastPathComponent)), loop: \(String(describing: video.loop?.lastPathComponent)), outro: \(String(describing: video.outro?.lastPathComponent))}"
         }
     }
 }
@@ -174,7 +174,7 @@ struct AnimationCollection {
                 }
                 let animationContexts: [AnimationContext] = switch fileExtension {
                 case HEIC_FILE_TYPE:
-                    constructImageSequenceAnimation(from: files[index ..< endOfAnimationIndex], resourceName: resourceName)
+                    constructImageSequenceAnimation(from: files[index ..< endOfAnimationIndex])
                 case MOV_FILE_TYPE:
                     constructVideoAnimation(from: files[index ..< endOfAnimationIndex])
                 default:
@@ -262,7 +262,7 @@ struct AnimationCollection {
         return introClips.map { (Animation(clip: $0.clip), $0.source, $0.destination) }
     }
     
-    private static func constructImageSequenceAnimation(from files: ArraySlice<URL>, resourceName: some StringProtocol) -> [AnimationContext] {
+    private static func constructImageSequenceAnimation(from files: ArraySlice<URL>) -> [AnimationContext] {
         var introClips: [ClipKind: (clip: Clip<ImageSequence>, source: Substring?, destination: Substring?, isTransitional: Bool)] = [:]
         var outroClips: [(clip: Clip<ImageSequence>, destination: Substring?)] = []
         var animations = [AnimationContext]()
@@ -282,7 +282,7 @@ struct AnimationCollection {
                 introClips[clip.kind] = (clip, parsedName.from, parsedName.to, parsedName.from != nil || parsedName.isHideOrReveal)
             } else if clip.loop != nil { // there must be an intro if there is a loop, and since it's sorted, the intro comes first
                 if case .failure(let error) = introClips[clip.kind]?.clip.tryMerge(clip) {
-                    Log.fault("failed to merge intro and loop clip of \(resourceName): \(error)")
+                    Log.fault("failed to merge intro clip `\(String(describing: introClips[clip.kind]?.clip))` and loop clip `\(clip)`: \(error)")
                 }
             } else {
                 outroClips.append((clip, parsedName.to))
@@ -308,7 +308,7 @@ struct AnimationCollection {
             } else if introClips[outroClip.kind] == nil {
                 animations.append((Animation(clip: outroClip), nil, destination))
             } else {
-                Log.fault("failed to merge intro and outro clip of \(resourceName)")
+                Log.fault("failed to merge intro clip (`\(String(describing: introClips[outroClip.kind]?.clip))`) and outro clip `\(outroClip)`")
             }
         }
         return animations
@@ -348,7 +348,7 @@ struct AnimationCollection {
     
     func randomTransitionAndMask() -> (transition: Clip<URL>, mask: Mask) {
         let transition = dreamTransitions.randomElement()!
-        let mask = if nonDreamyTransitions.contains(transition.name) {
+        let mask = if Self.nonDreamyTransitions.contains(transition.name) {
             masks["TM007"] // line swiping transition
         } else {
             masks.values.randomElement()
@@ -359,9 +359,7 @@ struct AnimationCollection {
     /// nonDreamyTransitions are the ones that are not shown as dreamy,
     /// aka, cannot use the dream bubble mask.
     /// For them, we specifically use TM007 mask (line swiping).
-    private var nonDreamyTransitions: [String] {
-        ["ST001", "ST005"]
-    }
+    private static let nonDreamyTransitions: Set<String> = ["ST001", "ST005"]
 }
 
 struct FileSortComparator: SortComparator {
@@ -524,22 +522,13 @@ struct ImageSequence: Equatable, Hashable {
     /// The full file name can be reconstructed through `String(format: "\(prefix)%06d.heic", number)`.
     /// *Note*: the reconstructed file name does not include the extension.
     let prefix: String
-    let lastFile: UInt8
-    let baseURL: URL
+    let urls: [URL]
     
-    private func fileNameWithExtension(at index: UInt8) -> String {
-        String(format: "\(prefix)%06d.heic", index)
-    }
-    
-    /// urls returns
-    var urls: [URL] {
-        (0 ... lastFile)
+    init(prefix: String, lastFile: UInt8, baseURL: URL) {
+        self.prefix = prefix
+        self.urls = (0 ... lastFile)
             .lazy
-            .map { self.fileNameWithExtension(at: $0) }
-            .map { self.baseURL.appendingPathComponent($0) }
-    }
-    
-    var urlsCount: Int {
-        Int(lastFile)
+            .map { String(format: "\(prefix)%06d.heic", $0) }
+            .map { baseURL.appendingPathComponent($0) }
     }
 }

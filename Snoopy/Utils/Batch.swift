@@ -17,12 +17,17 @@ enum Batch {
             initializedCount = urls.count
         }
     }
-
-    static func asyncLoad<R: Sendable>(urls: ArraySlice<URL>, transform: @escaping @Sendable (URL) throws -> R) async rethrows -> [R] {
-        try await withThrowingTaskGroup(of: (Int, R).self) { group -> [R] in
+    
+    static func asyncLoad<R: Sendable>(urls: Array<URL>, transform: @escaping @Sendable (URL) async throws -> R) async rethrows -> [R] {
+        try await asyncLoad(urls: urls[...], transform: transform)
+    }
+    
+    static func asyncLoad<R: Sendable>(urls: ArraySlice<URL>, transform: @escaping @Sendable (URL) async throws -> R) async rethrows -> [R] {
+        guard !urls.isEmpty else { return [] }
+        return try await withThrowingTaskGroup(of: (Int, R).self) { group -> [R] in
             for (index, url) in urls.enumerated() {
                 group.addTask {
-                    try (index, transform(url))
+                    try await (index, transform(url))
                 }
             }
             var buffer = [R?](repeating: nil, count: urls.count)
