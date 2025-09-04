@@ -128,7 +128,7 @@ final class SnoopyScene: SKScene {
         }
 
         await playItems.first?.ready()
-        await Self.pauseForPlayerLoading(interval: IMAGES_SEQ_INTERVAL)
+        await Self.forceLoadingFirstFrame(player: player)
         imageNode = nil
         videoNode.play()
     }
@@ -156,7 +156,7 @@ final class SnoopyScene: SKScene {
             introMaskCache = MaskCache(mask: mask.mask.intro!, outline: mask.outline.intro!)
 
             await introTransition.first?.ready()
-            await Self.pauseForPlayerLoading(interval: IMAGES_SEQ_INTERVAL)
+            await Self.forceLoadingFirstFrame(player: transitionPlayer)
             imageNode = nil
             transitionVideoNode.play()
         } else { // no intro, direct to dream
@@ -267,14 +267,10 @@ final class SnoopyScene: SKScene {
         videoDidFinishPlayingObserver = nil
     }
 
-    /// pauseForPlayerLoading is a function that pauses temporarily to wait for AVPlayer loading.
-    /// Calling this function would delay the process, sure.
-    /// But it will resolve the flickering issue between the transition from image sequence to video.
-    /// The theory behind is, when we remove the image sequence node, the video player is not ready,
-    /// thus a flicker happens.
-    /// With this short pause, the video player can be loaded (hopefully, and tested fine).
-    private static func pauseForPlayerLoading(interval: TimeInterval) async {
-        try! await Task.sleep(nanoseconds: UInt64(interval) * 1000000000)
+    /// forceLoadingFirstFrame is a function that forces player to load the first frame and wait for it.
+    /// This is used to fix the flickering issue.
+    private static func forceLoadingFirstFrame(player: AVPlayer) async {
+        await player.seek(to: .zero)
     }
 }
 
