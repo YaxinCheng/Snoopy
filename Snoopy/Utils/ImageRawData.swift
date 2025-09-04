@@ -40,29 +40,23 @@ struct ImageRawData {
         else {
             throw Error.failedToLoadImage
         }
-        let width = image.width
-        let height = image.height
+        width = image.width
+        height = image.height
         let bytesPerPixel = 4
         let bytesPerRow = width * bytesPerPixel
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        var pixelData = Data(count: height * bytesPerRow)
-        try pixelData.withUnsafeMutableBytes { buffer in
-            guard let context = CGContext(
-                data: buffer.baseAddress,
-                width: width,
-                height: height,
-                bitsPerComponent: 8,
-                bytesPerRow: bytesPerRow,
-                space: colorSpace,
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue
-            ) else {
-                throw Error.failedToConvertToRawData
-            }
-            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: bytesPerRow,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue
+        ) else {
+            throw Error.failedToConvertToRawData
         }
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
 
-        self.data = pixelData
-        self.width = width
-        self.height = height
+        self.data = Data(bytes: context.data!, count: height * bytesPerRow)
     }
 }

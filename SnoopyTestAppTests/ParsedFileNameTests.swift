@@ -147,7 +147,7 @@ struct ParsedFileNameTests {
     }
 
     @Test func testIsDecoration() async throws {
-        let resourceNameIv = "IV" + [randomInt, randomInt, randomInt].lazy.map(String.init).joined()
+        let resourceNameIv = "VI" + [randomInt, randomInt, randomInt].lazy.map(String.init).joined()
         #expect(ParsedFileName.isDecoration(resourceNameIv))
         let resourceNameWe = "WE" + [randomInt, randomInt, randomInt].lazy.map(String.init).joined()
         #expect(ParsedFileName.isDecoration(resourceNameWe))
