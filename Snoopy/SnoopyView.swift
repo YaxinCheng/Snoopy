@@ -24,6 +24,10 @@ struct SnoopyView: View {
                 }
             }
             .onReceive(screenSaverStopObserver.publisher) { _ in
+                if #available(macOS 26, *) {
+                    // Hack to prevent screensaver from restarting automatically.
+                    sleep(2)
+                }
                 NSApplication.shared.terminate(nil)
             }
     }
