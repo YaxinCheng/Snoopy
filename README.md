@@ -40,7 +40,9 @@ Please copy the files into the existing `Resources` folder at the project root l
 You can follow the [instruction](https://github.com/user-attachments/assets/d3faed3f-44f3-476b-9822-26835c8d32f7) to fetch resource files from a tvOS simulator.
 
 A simplified version on how to do it is:
-* cd into the simulator path. E.g. `cd '/Library/Developer/CoreSimulator/Volumes/tvOS_22K154/Library/Developer/CoreSimulator/Profiles/Runtimes/tvOS 18.2.simruntime'`. 
+* find simulator path through `xcrun simctl runtime list -v`.
+    * it will show a few paths, then you should go to the one ending with `.simruntime`.
+* cd into the simulator path. E.g. `cd '/private/var/run/com.apple.security.cryptexd/mnt/com.apple.AppleTVOS.SimulatorRuntime-v24.10.360.0.qFF4AQ/Library/Developer/CoreSimulator/Profiles/Runtimes/tvOS 27.0.simruntime'`. 
     * The path may be different given the version exists in the path
 * copy the resource files. `sudo find -E . -regex ".*/[0-9]{3}.*\.(mov|heic)" -exec cp {} ~/Developer/Snoopy/Resources \;`
 * remove unused files (not sure why the same masks are represented in both mov and heic, so this project just uses the heic version)
