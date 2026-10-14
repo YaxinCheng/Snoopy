@@ -26,7 +26,7 @@ final class SnoopyViewModel: ObservableObject {
                 } else {
                     model.startAnimation(nextAnimation)
                 }
-            } else if ParsedFileName.isDream(finishedAnimation.name) {
+            } else if NameUtil.isDream(finishedAnimation.name) {
                 model.startRph()
             } else {
                 model.startRandomAnimation()

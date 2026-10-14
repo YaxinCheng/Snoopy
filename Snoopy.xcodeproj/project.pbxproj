@@ -88,6 +88,7 @@
 				Utils/DistributedNotificationObserver.swift,
 				Utils/ImageRawData.swift,
 				Utils/Log.swift,
+				Utils/NameUtil.swift,
 				Utils/Once.swift,
 				"Utils/Optional+Extension.swift",
 				"Utils/SpriteKit+Extension.swift",
@@ -2155,6 +2156,7 @@
 				Utils/DistributedNotificationObserver.swift,
 				Utils/ImageRawData.swift,
 				Utils/Log.swift,
+				Utils/NameUtil.swift,
 				Utils/Once.swift,
 				"Utils/Optional+Extension.swift",
 				"Utils/SpriteKit+Extension.swift",
@@ -2172,15 +2174,19 @@
 				101_AP001_Intro_From_BP003.mov,
 				101_AP001_Loop.mov,
 				101_AP001_Outro_To_BP001.mov,
+				101_AP001_To_RPD.mov,
 				101_AP002_Intro_From_BP002.mov,
 				101_AP002_Loop.mov,
 				101_AP002_Outro_To_BP004.mov,
+				101_AP002_To_RPD.mov,
 				101_AP003_Intro_From_BP004.mov,
 				101_AP003_Loop.mov,
 				101_AP003_Outro_To_BP003.mov,
+				101_AP003_To_RPD.mov,
 				101_AP007_Intro_From_BP001.mov,
 				101_AP007_Loop.mov,
 				101_AP007_Outro_To_BP002.mov,
+				101_AP007_To_RPD.mov,
 				101_AP010_Intro_From_BP001.mov,
 				101_AP010_Loop.mov,
 				101_AP010_Outro_To_BP002.mov,
@@ -2313,6 +2319,7 @@
 				101_BP001_To_BP004_000019.heic,
 				101_BP001_To_BP004_000020.heic,
 				101_BP001_To_BP004_000021.heic,
+				101_BP001_To_RPD.mov,
 				101_BP001_To_RPH_000000.heic,
 				101_BP001_To_RPH_000001.heic,
 				101_BP001_To_RPH_000002.heic,
@@ -2541,6 +2548,7 @@
 				101_BP002_To_BP004_000027.heic,
 				101_BP002_To_BP004_000028.heic,
 				101_BP002_To_BP004_000029.heic,
+				101_BP002_To_RPD.mov,
 				101_BP002_To_RPH_000000.heic,
 				101_BP002_To_RPH_000001.heic,
 				101_BP002_To_RPH_000002.heic,
@@ -2721,6 +2729,7 @@
 				101_BP003_To_BP004_000029.heic,
 				101_BP003_To_BP004_000030.heic,
 				101_BP003_To_BP004_000031.heic,
+				101_BP003_To_RPD.mov,
 				101_BP003_To_RPH_000000.heic,
 				101_BP003_To_RPH_000001.heic,
 				101_BP003_To_RPH_000002.heic,
@@ -2939,6 +2948,7 @@
 				101_BP004_To_BP003_000049.heic,
 				101_BP004_To_BP003_000050.heic,
 				101_BP004_To_BP003_000051.heic,
+				101_BP004_To_RPD.mov,
 				101_BP004_To_RPH_000000.heic,
 				101_BP004_To_RPH_000001.heic,
 				101_BP004_To_RPH_000002.heic,
@@ -2990,6 +3000,13 @@
 				101_IS006_00.heic,
 				101_IS007_00.heic,
 				101_IS008_00.heic,
+				101_RPD_Loop.mov,
+				101_RPD_To_BP001.mov,
+				101_RPD_To_BP002.mov,
+				101_RPD_To_BP003.mov,
+				101_RPD_To_BP004.mov,
+				101_RPD001.mov,
+				101_RPH_Loop.mov,
 				101_RPH_To_BP001_000000.heic,
 				101_RPH_To_BP001_000001.heic,
 				101_RPH_To_BP001_000002.heic,
@@ -3110,6 +3127,15 @@
 				101_RPH_To_BP004_000029.heic,
 				101_RPH_To_BP004_000030.heic,
 				101_RPH_To_BP004_000031.heic,
+				101_RWD_To_BP001.mov,
+				101_RWD_To_BP002.mov,
+				101_RWD_To_BP003.mov,
+				101_RWD_To_BP004.mov,
+				101_RWD001.mov,
+				101_RWH_To_BP001.mov,
+				101_RWH_To_BP002.mov,
+				101_RWH_To_BP003.mov,
+				101_RWH_To_BP004.mov,
 				101_ST001_Hide_A.mov,
 				101_ST001_Reveal.mov,
 				101_ST002_Hide_A.mov,
@@ -3822,9 +3848,15 @@
 				102_TM004_Reveal_Outline_000025.heic,
 				102_TM004_Reveal_Outline_000026.heic,
 				102_TM004_Reveal_Outline_000027.heic,
+				103_AP001_To_RPH.mov,
+				103_AP002_To_RPH.mov,
+				103_AP003_To_RPH.mov,
+				103_AP007_To_RPH.mov,
 				103_AP021_Intro_From_BP003.mov,
 				103_AP021_Loop.mov,
 				103_AP021_Outro_To_BP001.mov,
+				103_AP021_To_RWD.mov,
+				103_AP021_To_RWH.mov,
 				103_CM019_From_BP001_To_BP002.mov,
 				103_CM020_From_BP002_To_BP004.mov,
 				103_CM021_From_BP004_To_BP003.mov,
@@ -3832,6 +3864,8 @@
 				103_IS022_00.heic,
 				103_IS025_00.heic,
 				103_IS029_00.heic,
+				103_RPH002.mov,
+				103_RWH002.mov,
 				103_ST003_Hide_A.mov,
 				103_ST003_Hide_B.mov,
 				103_ST004_Hide_B.mov,
@@ -4097,14 +4131,26 @@
 				103_TM006_Reveal_Outline_000038.heic,
 				103_TM006_Reveal_Outline_000039.heic,
 				103_VI018.mov,
+				104_AP010_To_RWD.mov,
+				104_AP010_To_RWH.mov,
 				104_AP028_Intro_From_BP002.mov,
 				104_AP028_Loop.mov,
 				104_AP028_Outro_To_BP001.mov,
+				104_AP028_To_RPD.mov,
+				104_AP028_To_RPH.mov,
 				104_AP031_Intro_From_BP004.mov,
 				104_AP031_Loop.mov,
 				104_AP031_Outro_To_BP001.mov,
+				104_AP031_To_RWD.mov,
+				104_AP031_To_RWH.mov,
 				104_IS032_00.heic,
 				104_IS037_00.heic,
+				104_RPD005.mov,
+				104_RPH003.mov,
+				104_RPH004.mov,
+				104_RWD005.mov,
+				104_RWH003.mov,
+				104_RWH004.mov,
 				104_ST005_Reveal.mov,
 				104_ST006_Hide_A.mov,
 				104_ST006_Hide_B.mov,
@@ -4204,6 +4250,8 @@
 				104_TM007_Reveal_Outline_000021.heic,
 				104_TM007_Reveal_Outline_000022.heic,
 				104_TM007_Reveal_Outline_000023.heic,
+				thumbnail.png,
+				"thumbnail@2x.png",
 			);
 		};
 		1494FAC52E45D90A00B9D5DD /* Exceptions for "Resources" folder in "Copy Files" phase from "SnoopyTestApp" target */ = {
@@ -4214,15 +4262,19 @@
 				101_AP001_Intro_From_BP003.mov,
 				101_AP001_Loop.mov,
 				101_AP001_Outro_To_BP001.mov,
+				101_AP001_To_RPD.mov,
 				101_AP002_Intro_From_BP002.mov,
 				101_AP002_Loop.mov,
 				101_AP002_Outro_To_BP004.mov,
+				101_AP002_To_RPD.mov,
 				101_AP003_Intro_From_BP004.mov,
 				101_AP003_Loop.mov,
 				101_AP003_Outro_To_BP003.mov,
+				101_AP003_To_RPD.mov,
 				101_AP007_Intro_From_BP001.mov,
 				101_AP007_Loop.mov,
 				101_AP007_Outro_To_BP002.mov,
+				101_AP007_To_RPD.mov,
 				101_AP010_Intro_From_BP001.mov,
 				101_AP010_Loop.mov,
 				101_AP010_Outro_To_BP002.mov,
@@ -4355,6 +4407,7 @@
 				101_BP001_To_BP004_000019.heic,
 				101_BP001_To_BP004_000020.heic,
 				101_BP001_To_BP004_000021.heic,
+				101_BP001_To_RPD.mov,
 				101_BP001_To_RPH_000000.heic,
 				101_BP001_To_RPH_000001.heic,
 				101_BP001_To_RPH_000002.heic,
@@ -4583,6 +4636,7 @@
 				101_BP002_To_BP004_000027.heic,
 				101_BP002_To_BP004_000028.heic,
 				101_BP002_To_BP004_000029.heic,
+				101_BP002_To_RPD.mov,
 				101_BP002_To_RPH_000000.heic,
 				101_BP002_To_RPH_000001.heic,
 				101_BP002_To_RPH_000002.heic,
@@ -4763,6 +4817,7 @@
 				101_BP003_To_BP004_000029.heic,
 				101_BP003_To_BP004_000030.heic,
 				101_BP003_To_BP004_000031.heic,
+				101_BP003_To_RPD.mov,
 				101_BP003_To_RPH_000000.heic,
 				101_BP003_To_RPH_000001.heic,
 				101_BP003_To_RPH_000002.heic,
@@ -4981,6 +5036,7 @@
 				101_BP004_To_BP003_000049.heic,
 				101_BP004_To_BP003_000050.heic,
 				101_BP004_To_BP003_000051.heic,
+				101_BP004_To_RPD.mov,
 				101_BP004_To_RPH_000000.heic,
 				101_BP004_To_RPH_000001.heic,
 				101_BP004_To_RPH_000002.heic,
@@ -5032,6 +5088,13 @@
 				101_IS006_00.heic,
 				101_IS007_00.heic,
 				101_IS008_00.heic,
+				101_RPD_Loop.mov,
+				101_RPD_To_BP001.mov,
+				101_RPD_To_BP002.mov,
+				101_RPD_To_BP003.mov,
+				101_RPD_To_BP004.mov,
+				101_RPD001.mov,
+				101_RPH_Loop.mov,
 				101_RPH_To_BP001_000000.heic,
 				101_RPH_To_BP001_000001.heic,
 				101_RPH_To_BP001_000002.heic,
@@ -5152,6 +5215,15 @@
 				101_RPH_To_BP004_000029.heic,
 				101_RPH_To_BP004_000030.heic,
 				101_RPH_To_BP004_000031.heic,
+				101_RWD_To_BP001.mov,
+				101_RWD_To_BP002.mov,
+				101_RWD_To_BP003.mov,
+				101_RWD_To_BP004.mov,
+				101_RWD001.mov,
+				101_RWH_To_BP001.mov,
+				101_RWH_To_BP002.mov,
+				101_RWH_To_BP003.mov,
+				101_RWH_To_BP004.mov,
 				101_ST001_Hide_A.mov,
 				101_ST001_Reveal.mov,
 				101_ST002_Hide_A.mov,
@@ -5864,9 +5936,15 @@
 				102_TM004_Reveal_Outline_000025.heic,
 				102_TM004_Reveal_Outline_000026.heic,
 				102_TM004_Reveal_Outline_000027.heic,
+				103_AP001_To_RPH.mov,
+				103_AP002_To_RPH.mov,
+				103_AP003_To_RPH.mov,
+				103_AP007_To_RPH.mov,
 				103_AP021_Intro_From_BP003.mov,
 				103_AP021_Loop.mov,
 				103_AP021_Outro_To_BP001.mov,
+				103_AP021_To_RWD.mov,
+				103_AP021_To_RWH.mov,
 				103_CM019_From_BP001_To_BP002.mov,
 				103_CM020_From_BP002_To_BP004.mov,
 				103_CM021_From_BP004_To_BP003.mov,
@@ -5874,6 +5952,8 @@
 				103_IS022_00.heic,
 				103_IS025_00.heic,
 				103_IS029_00.heic,
+				103_RPH002.mov,
+				103_RWH002.mov,
 				103_ST003_Hide_A.mov,
 				103_ST003_Hide_B.mov,
 				103_ST004_Hide_B.mov,
@@ -6139,14 +6219,26 @@
 				103_TM006_Reveal_Outline_000038.heic,
 				103_TM006_Reveal_Outline_000039.heic,
 				103_VI018.mov,
+				104_AP010_To_RWD.mov,
+				104_AP010_To_RWH.mov,
 				104_AP028_Intro_From_BP002.mov,
 				104_AP028_Loop.mov,
 				104_AP028_Outro_To_BP001.mov,
+				104_AP028_To_RPD.mov,
+				104_AP028_To_RPH.mov,
 				104_AP031_Intro_From_BP004.mov,
 				104_AP031_Loop.mov,
 				104_AP031_Outro_To_BP001.mov,
+				104_AP031_To_RWD.mov,
+				104_AP031_To_RWH.mov,
 				104_IS032_00.heic,
 				104_IS037_00.heic,
+				104_RPD005.mov,
+				104_RPH003.mov,
+				104_RPH004.mov,
+				104_RWD005.mov,
+				104_RWH003.mov,
+				104_RWH004.mov,
 				104_ST005_Reveal.mov,
 				104_ST006_Hide_A.mov,
 				104_ST006_Hide_B.mov,
@@ -6246,6 +6338,8 @@
 				104_TM007_Reveal_Outline_000021.heic,
 				104_TM007_Reveal_Outline_000022.heic,
 				104_TM007_Reveal_Outline_000023.heic,
+				thumbnail.png,
+				"thumbnail@2x.png",
 			);
 		};
 /* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
@@ -6410,7 +6504,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1620;
-				LastUpgradeCheck = 1630;
+				LastUpgradeCheck = 2700;
 				TargetAttributes = {
 					1405D2CE2D5D9096003F3594 = {
 						CreatedOnToolsVersion = 16.2;
@@ -6651,6 +6745,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 			};
 			name = Debug;
 		};
@@ -6707,6 +6802,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 			};
 			name = Release;
@@ -6725,7 +6821,7 @@
 				INFOPLIST_KEY_NSPrincipalClass = Snoopy.MainView;
 				INSTALL_PATH = "$(HOME)/Library/Screen Savers";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.1.3;
+				MARKETING_VERSION = 0.1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ycheng.Snoopy;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -6749,7 +6845,7 @@
 				INFOPLIST_KEY_NSPrincipalClass = Snoopy.MainView;
 				INSTALL_PATH = "$(HOME)/Library/Screen Savers";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.1.3;
+				MARKETING_VERSION = 0.1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ycheng.Snoopy;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

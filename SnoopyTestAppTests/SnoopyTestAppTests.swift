@@ -118,7 +118,7 @@ struct SnoopyTestAppTests {
     private let videoTransitionRevealA = BASE_URL.appending(path: "101_ST001_Reveal_A.mov")
     private let videoTransitionRevealB = BASE_URL.appending(path: "101_ST001_Reveal_B.mov")
 
-    @Test func TestMaskOutline() async throws {
+    @Test func TestMaskOutline() {
         // 101_TM001_Hide_Outline_
         let animationCollection = AnimationCollection.from(files:
             (imageSequencesOutlineReveal + imageSequencesOutlineHide + imageSequencesMaskHide + imageSequencesMaskReveal).shuffled())
@@ -137,7 +137,7 @@ struct SnoopyTestAppTests {
                 prefix: "101_TM001_Hide_Mask_",
                 lastFile: 3,
                 baseURL: BASE_URL
-            ),
+            )
         ))
         #expect(animationCollection.masks.first?.value.outline == Clip(
             name: "TM001",
@@ -155,7 +155,7 @@ struct SnoopyTestAppTests {
         ))
     }
 
-    @Test func TestTransitionWithVariations() async throws {
+    @Test func TestTransitionWithVariations() {
         let animationCollection = AnimationCollection.from(files: [
             videoTransitionHideA, videoTransitionHideB, videoTransitionRevealA, videoTransitionRevealB,
         ].shuffled())
@@ -169,10 +169,11 @@ struct SnoopyTestAppTests {
         ])
     }
 
-    @Test func TestVideoGroupIntroFromLoopOutroTo() async throws {
+    @Test func TestVideoGroupIntroFromLoopOutroTo() {
         // 104_AP031_Intro_From_BP004 + 104_AP031_Loop + 104_AP031_Outro_To_BP001
         let animationCollection = AnimationCollection.from(
-            files: [videoWithIntroFrom, videoWithLoop, videoWithOutroTo].shuffled())
+            files: [videoWithIntroFrom, videoWithLoop, videoWithOutroTo].shuffled()
+        )
         #expect(animationCollection.specialImages.isEmpty)
         #expect(animationCollection.jumpGraph.count == 1)
         #expect(animationCollection.jumpGraph.keys.first == .video(Clip(
@@ -183,16 +184,20 @@ struct SnoopyTestAppTests {
         )))
     }
 
-    @Test func TestVideoGroupWithoutIntro() async throws {
+    @Test func TestVideoGroupWithoutIntro() {
         // 101_CA004_Outro
         let animationCollection = AnimationCollection.from(files: [
             videoWithOutro,
         ].shuffled())
         #expect(animationCollection.specialImages.isEmpty)
-        #expect(animationCollection.jumpGraph.count == 0)
+        #expect(animationCollection.jumpGraph.count == 1)
+        #expect(animationCollection.jumpGraph.keys.first == .video(Clip(
+            name: "CA004",
+            outro: videoWithOutro
+        )))
     }
 
-    @Test func TestVideoGroupIntroAndOutro() async throws {
+    @Test func TestVideoGroupIntroAndOutro() {
         // 101_CA004_Intro + 101_CA004_Outro
         let animationCollection = AnimationCollection.from(files: [
             videoWithIntro, videoWithOutro,
@@ -206,7 +211,7 @@ struct SnoopyTestAppTests {
         )))
     }
 
-    @Test func TestVideoGroupFromAndTo() async throws {
+    @Test func TestVideoGroupFromAndTo() {
         // 103_CM021_From_BP004_To_BP003
         let animationCollection = AnimationCollection.from(files: [
             videoWithFromAndTo,
@@ -219,7 +224,7 @@ struct SnoopyTestAppTests {
         )))
     }
 
-    @Test func TestVideoGroupFullFledged() async throws {
+    @Test func TestVideoGroupFullFledged() {
         // 104_ST005_Reveal
         let animationCollection = AnimationCollection.from(files: [
             videoFullFledge,
@@ -232,11 +237,12 @@ struct SnoopyTestAppTests {
         )))
     }
 
-    @Test func TestImageGroupFromTo() async throws {
+    @Test func TestImageGroupFromTo() {
         // 101_BP004_From_BP002_ + 101_BP004_To_BP002_
         let animationCollection = AnimationCollection.from(
             files: (imageSequencesWithFrom + imageSequencesWithTo)
-                .shuffled())
+                .shuffled()
+        )
         #expect(animationCollection.specialImages.isEmpty)
         #expect(animationCollection.jumpGraph.count == 1)
         #expect(animationCollection.jumpGraph.keys.first == .imageSequence(Clip(
@@ -254,11 +260,12 @@ struct SnoopyTestAppTests {
         )))
     }
 
-    @Test func TestImageGroupIntroLoopOutro() async throws {
+    @Test func TestImageGroupIntroLoopOutro() {
         // 102_SS001_Intro_ + 102_SS001_Loop_ + 102_SS001_Outro_
         let animationCollection = AnimationCollection.from(
             files: (imageSequencesWithIntro + imageSequencesWithLoop + imageSequencesWithOutro)
-                .shuffled())
+                .shuffled()
+        )
         #expect(animationCollection.specialImages.isEmpty)
         #expect(animationCollection.jumpGraph.count == 1)
         #expect(animationCollection.jumpGraph.keys.first == .imageSequence(
@@ -279,13 +286,15 @@ struct SnoopyTestAppTests {
                     lastFile: 3,
                     baseURL: BASE_URL
                 )
-            )))
+            )
+        ))
     }
 
-    @Test func TestImageGroupFromAndTo() async throws {
+    @Test func TestImageGroupFromAndTo() {
         // 101_BP004_From_BP002_To_BP003_
         let animationCollection = AnimationCollection.from(
-            files: imageSequencesWithFromAndTo)
+            files: imageSequencesWithFromAndTo
+        )
         #expect(animationCollection.specialImages.isEmpty)
         #expect(animationCollection.jumpGraph.count == 1)
         #expect(animationCollection.jumpGraph.keys.first == .imageSequence(
@@ -300,7 +309,7 @@ struct SnoopyTestAppTests {
         ))
     }
 
-    @Test func TestGroupFoundSpecialImages() async throws {
+    @Test func TestGroupFoundSpecialImages() {
         let animationCollection = AnimationCollection.from(files: specialImages.shuffled())
         #expect(animationCollection.specialImages.count == 2)
         #expect(animationCollection.specialImages.sorted {
@@ -310,7 +319,7 @@ struct SnoopyTestAppTests {
         })
     }
 
-    @Test func TestGroupImageSequencesWithMultipleTos() async throws {
+    @Test func TestGroupImageSequencesWithMultipleTos() {
         let animationCollection = AnimationCollection.from(files: imageSequenceWithMultipleTos.shuffled())
         #expect(animationCollection.specialImages.count == 0)
         let animations = animationCollection.jumpGraph.sorted {
@@ -320,7 +329,7 @@ struct SnoopyTestAppTests {
         #expect(animations[0].key == .imageSequence(
             Clip(
                 name: "BP001",
-                intro: ImageSequence(prefix: "101_BP001_", lastFile: 4, baseURL: BASE_URL),
+                intro: ImageSequence(prefix: "101_BP001_", lastFile: 4, baseURL: BASE_URL)
             )
         ))
         #expect(animations[1].key == .imageSequence(
@@ -339,7 +348,7 @@ struct SnoopyTestAppTests {
         ))
     }
 
-    @Test func TestDreamContent() async throws {
+    @Test func TestDreamContent() {
         let animationCollection = AnimationCollection.from(files: [videoWithDreamContent])
         #expect(animationCollection.dreams == [
             .video(Clip(

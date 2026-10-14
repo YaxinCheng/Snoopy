@@ -84,7 +84,7 @@ final class SnoopyScene: SKScene {
         cleanup()
         switch animation {
         case .video(let clip):
-            if ParsedFileName.isDream(clip.name) {
+            if NameUtil.isDream(clip.name) {
                 await setupSceneFromDreamVideoClip(clip, mask: mask!, transition: transition!)
             } else {
                 await setupSceneFromPureVideoClip(clip)

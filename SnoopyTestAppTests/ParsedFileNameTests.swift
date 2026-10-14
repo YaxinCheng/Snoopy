@@ -76,17 +76,17 @@ struct ParsedFileNameTests {
     }
 
     @Test func testExtractResourceName() async throws {
-        let resourceName = ParsedFileName.extractResourceName(from: "101_CA123_Outline")
+        let resourceName = NameUtil.extractResourceName(from: "101_CA123_Outline")
         #expect(resourceName == "CA123")
     }
 
     @Test func testExtractResourceNameNoUnderscore() async throws {
-        let resourceName = ParsedFileName.extractResourceName(from: "101CA123Outline")
+        let resourceName = NameUtil.extractResourceName(from: "101CA123Outline")
         #expect(resourceName == "101CA123Outline")
     }
 
     @Test func testExtractImageSequenceNamePrefix() async throws {
-        let resourceName = ParsedFileName.extractImageSequenceNamePrefix(fileName: "101_CA123_Outline_001")
+        let resourceName = NameUtil.extractImageSequenceNamePrefix(fileName: "101_CA123_Outline_001")
         #expect(resourceName == "101_CA123_Outline_")
     }
 
@@ -96,64 +96,64 @@ struct ParsedFileNameTests {
 
     @Test func testIsSnoopyHouse() async throws {
         let resourceName = "IS" + [randomInt, randomInt, randomInt].lazy.map(String.init).joined()
-        #expect(ParsedFileName.isSnoopyHouse(resourceName))
+        #expect(NameUtil.isSnoopyHouse(resourceName))
     }
 
     @Test func testIsNotSnoopyHouse() async throws {
-        #expect(!ParsedFileName.isSnoopyHouse("CA123"))
+        #expect(!NameUtil.isSnoopyHouse("CA123"))
     }
 
     @Test func testIsBackground() async throws {
-        #expect(ParsedFileName.isBackground("Background"))
+        #expect(NameUtil.isBackground("Background"))
     }
 
     @Test func testIsNotBackground() async throws {
-        #expect(!ParsedFileName.isBackground("CA123"))
+        #expect(!NameUtil.isBackground("CA123"))
     }
 
     @Test func testIsDream() async throws {
         let resourceName = "AS" + [randomInt, randomInt, randomInt].lazy.map(String.init).joined()
-        #expect(ParsedFileName.isDream(resourceName))
+        #expect(NameUtil.isDream(resourceName))
     }
 
     @Test func testIsNotDream() async throws {
-        #expect(!ParsedFileName.isDream("CA123"))
+        #expect(!NameUtil.isDream("CA123"))
     }
 
     @Test func testIsDreamTransition() async throws {
         let resourceName = "ST" + [randomInt, randomInt, randomInt].lazy.map(String.init).joined()
-        #expect(ParsedFileName.isDreamTransition(resourceName))
+        #expect(NameUtil.isDreamTransition(resourceName))
     }
 
     @Test func testIsNotDreamTransition() async throws {
-        #expect(!ParsedFileName.isDreamTransition("CA123"))
+        #expect(!NameUtil.isDreamTransition("CA123"))
     }
 
     @Test func testIsMask() async throws {
         let resourceName = "TM" + [randomInt, randomInt, randomInt].lazy.map(String.init).joined()
-        #expect(ParsedFileName.isMask(resourceName))
+        #expect(NameUtil.isMask(resourceName))
     }
 
     @Test func testIsNotMask() async throws {
-        #expect(!ParsedFileName.isMask("CA123"))
+        #expect(!NameUtil.isMask("CA123"))
     }
 
     @Test func testIsRph() async throws {
-        #expect(ParsedFileName.isRph("RPH"))
+        #expect(NameUtil.isRph("RPH"))
     }
 
     @Test func testIsNotRph() async throws {
-        #expect(!ParsedFileName.isRph("CA123"))
+        #expect(!NameUtil.isRph("CA123"))
     }
 
     @Test func testIsDecoration() async throws {
         let resourceNameIv = "VI" + [randomInt, randomInt, randomInt].lazy.map(String.init).joined()
-        #expect(ParsedFileName.isDecoration(resourceNameIv))
+        #expect(NameUtil.isDecoration(resourceNameIv))
         let resourceNameWe = "WE" + [randomInt, randomInt, randomInt].lazy.map(String.init).joined()
-        #expect(ParsedFileName.isDecoration(resourceNameWe))
+        #expect(NameUtil.isDecoration(resourceNameWe))
     }
 
     @Test func testIsNotDecoration() async throws {
-        #expect(!ParsedFileName.isDecoration("CA123"))
+        #expect(!NameUtil.isDecoration("CA123"))
     }
 }
