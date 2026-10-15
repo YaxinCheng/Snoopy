@@ -8,13 +8,38 @@
 import Foundation
 
 actor AsyncOnce {
-    private var executed: Bool = false
+    private var task: Task<Void, Error>?
 
-    func execute(_ block: @Sendable () async throws -> Void) async rethrows {
-        if !executed {
-            Log.debug("AsyncOnce executed")
-            executed = true
-            try await block()
+    func execute(_ block: @Sendable @escaping () async throws -> Void) async throws {
+        let executionTask: Task<Void, Error>
+        if let existingTask = task {
+            executionTask = existingTask
+        } else {
+            let newTask = Task {
+                try await block()
+            }
+            task = newTask
+            executionTask = newTask
         }
+        do {
+            try await executionTask.value
+        } catch {
+            task = nil
+            throw error
+        }
+    }
+
+    func execute(_ block: @Sendable @escaping () async -> Void) async {
+        let executionTask: Task<Void, Error>
+        if let existingTask = task {
+            executionTask = existingTask
+        } else {
+            let newTask = Task<Void, Error> {
+                await block()
+            }
+            task = newTask
+            executionTask = newTask
+        }
+        _ = await executionTask.result
     }
 }

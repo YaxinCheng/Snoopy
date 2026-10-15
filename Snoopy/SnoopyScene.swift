@@ -46,6 +46,13 @@ final class SnoopyScene: SKScene {
         }
     }
 
+    /// decorationNode is the node for decoration animations.
+    private var decorationNode: SKVideoNode? {
+        willSet {
+            decorationNode?.removeFromParent()
+        }
+    }
+
     /// setupBackgroundAndSnoopyHouse is a once token that executes a given function only once per program run.
     private lazy var setupBackgroundAndSnoopyHouse = AsyncOnce()
 
@@ -59,22 +66,23 @@ final class SnoopyScene: SKScene {
 
     /// setup function sets up an animation with given resources.
     func setup(animation: Animation, backgroundColor: NSColor, background: URL?, snoopyHouse: URL, mask: Mask?, transition: Clip<URL>?, decoration: Animation?) async {
-        await setupBackgroundAndSnoopyHouse.execute {
+        await setupBackgroundAndSnoopyHouse.execute { [weak self] in
+            guard let self else { return }
             do {
-                async let setupColor = setupColorBackgroundNode(color: backgroundColor)
-                async let setupBackground = setupBackground(background)
-                async let setupSnoopyHouse = setupSnoopyHouse(snoopyHouse)
+                async let setupColor = self.setupColorBackgroundNode(color: backgroundColor)
+                async let setupBackground = self.setupBackground(background)
+                async let setupSnoopyHouse = self.setupSnoopyHouse(snoopyHouse)
                 let (colorNode, backgroundNode, houseNode) = try await (
                     setupColor,
                     setupBackground,
                     setupSnoopyHouse,
                 )
                 await MainActor.run {
-                    addChild(colorNode)
+                    self.addChild(colorNode)
                     if let backgroundNode = backgroundNode {
-                        addChild(backgroundNode)
+                        self.addChild(backgroundNode)
                     }
-                    addChild(houseNode)
+                    self.addChild(houseNode)
                 }
             } catch {
                 Log.fault("Unable to load initial resources: \(error)")
@@ -227,23 +235,26 @@ final class SnoopyScene: SKScene {
         addChild(imageNode)
         self.imageNode = imageNode
         videoNode = nil
-        var decorationNode: SKVideoNode?
-        Task { [weak self, weak decorationNode] in
-            await self?.imageNode?.play(timePerFrame: IMAGES_SEQ_INTERVAL)
-            decorationNode?.removeFromParent()
-            self?._didFinishPlaying.send()
-        }
 
+        var activeDecorationNode: SKVideoNode?
         if !decorationItems.isEmpty {
             Log.debug("decoration triggered: \(decoration!.name)")
-            decorationNode = SKVideoNode(avPlayer: AVQueuePlayer(items: decorationItems)).fullscreen(in: self)
-            addChild(decorationNode!)
-            decorationNode?.zPosition = SECONDARY_Z_PRIORITY
-            decorationNode?.play()
-            decorationDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: decorationItems.last).sink { [weak self, weak decorationNode] _ in
-                decorationNode?.removeFromParent()
+            let node = SKVideoNode(avPlayer: AVQueuePlayer(items: decorationItems)).fullscreen(in: self)
+            addChild(node)
+            node.zPosition = SECONDARY_Z_PRIORITY
+            node.play()
+            activeDecorationNode = node
+            decorationDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: decorationItems.last).sink { [weak self, weak node] _ in
+                node?.removeFromParent()
                 self?.decorationDidFinishPlayingObserver = nil
             }
+        }
+        self.decorationNode = activeDecorationNode
+
+        Task { [weak self, weak activeDecorationNode] in
+            await self?.imageNode?.play(timePerFrame: IMAGES_SEQ_INTERVAL)
+            activeDecorationNode?.removeFromParent()
+            self?._didFinishPlaying.send()
         }
     }
 
@@ -265,6 +276,8 @@ final class SnoopyScene: SKScene {
 
     private func cleanup() {
         videoDidFinishPlayingObserver = nil
+        decorationDidFinishPlayingObserver = nil
+        decorationNode = nil
     }
 
     /// forceLoadingFirstFrame is a function that forces player to load the first frame and wait for it.

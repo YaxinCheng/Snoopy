@@ -25,10 +25,13 @@ struct SnoopyView: View {
             }
             .onReceive(screenSaverStopObserver.publisher) { _ in
                 if #available(macOS 26, *) {
-                    // Hack to prevent screensaver from restarting automatically.
-                    sleep(2)
+                    // Delay to prevent screensaver from restarting automatically without blocking the main runloop.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        NSApplication.shared.terminate(nil)
+                    }
+                } else {
+                    NSApplication.shared.terminate(nil)
                 }
-                NSApplication.shared.terminate(nil)
             }
     }
 }

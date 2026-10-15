@@ -29,7 +29,9 @@ struct ImageRawData {
     }
 
     static func asyncFrom(contentsOf fileURL: URL) async throws -> Self {
-        let (data, _) = try await URLSession.shared.data(from: fileURL)
+        let data = try await Task.detached {
+            try Data(contentsOf: fileURL, options: .mappedIfSafe)
+        }.value
         return try self.init(imageData: data)
     }
 
