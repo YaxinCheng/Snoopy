@@ -357,4 +357,47 @@ struct SnoopyTestAppTests {
             )),
         ])
     }
+
+    @Test func TestWakeAnimationsFromRph() {
+        let rphLoop = BASE_URL.appending(path: "101_RPH_Loop.mov")
+        let rph002 = BASE_URL.appending(path: "103_RPH002.mov")
+        let rphToBP001 = (0...3).map { BASE_URL.appending(path: "101_RPH_To_BP001_00000\($0).heic") }
+        let rwd001 = BASE_URL.appending(path: "101_RWD001.mov")
+        let rwdToBP001 = BASE_URL.appending(path: "101_RWD_To_BP001.mov")
+        let rpd001 = BASE_URL.appending(path: "101_RPD001.mov")
+        let rpdToBP001 = BASE_URL.appending(path: "101_RPD_To_BP001.mov")
+
+        let animationCollection = AnimationCollection.from(
+            files: [rphLoop, rph002, rwd001, rwdToBP001, rpd001, rpdToBP001] + rphToBP001
+        )
+        #expect(!animationCollection.wakeAnimations.isEmpty)
+        #expect(animationCollection.wakeAnimations.allSatisfy { $0.name == "RPH" && $0.designated })
+        #expect(animationCollection.wakeAnimations.allSatisfy { !$0.name.starts(with: "RW") })
+        #expect(animationCollection.wakeAnimations.allSatisfy { !$0.name.starts(with: "RPD") })
+    }
+
+    @Test func TestRphRestingPosesSeparation() {
+        let rphLoop = BASE_URL.appending(path: "101_RPH_Loop.mov")
+        let rph002 = BASE_URL.appending(path: "103_RPH002.mov")
+        let rphToBP001 = (0...3).map { BASE_URL.appending(path: "101_RPH_To_BP001_00000\($0).heic") }
+
+        let animationCollection = AnimationCollection.from(
+            files: [rphLoop, rph002] + rphToBP001
+        )
+        #expect(animationCollection.rph.count == 1)
+        #expect(animationCollection.rph.first?.name == "RPH002")
+        #expect(animationCollection.rph.first?.designated == false)
+        #expect(animationCollection.wakeAnimations.count == 1)
+        #expect(animationCollection.wakeAnimations.first?.designated == true)
+    }
+
+    @Test func TestDesignatedAnimationDetection() {
+        let clipDesignated = Clip(name: "BP001", outro: BASE_URL.appending(path: "101_BP001_To_BP002.mov"))
+        let animDesignated = Animation(clip: clipDesignated)
+        #expect(animDesignated.designated)
+
+        let clipNonDesignated = Clip(name: "BP001", loop: BASE_URL.appending(path: "101_BP001.mov"))
+        let animNonDesignated = Animation(clip: clipNonDesignated)
+        #expect(!animNonDesignated.designated)
+    }
 }

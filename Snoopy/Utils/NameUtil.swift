@@ -67,6 +67,10 @@ enum NameUtil {
         resourceName == "RPH"
     }
 
+    static func isRoofPose<S: StringProtocol>(_ resourceName: S) -> Bool {
+        resourceName.starts(with: "RP")
+    }
+
     static func isDecoration<S: StringProtocol>(_ resourceName: S) -> Bool {
         resourceName.starts(with: "VI") || resourceName.starts(with: "WE")
     }

@@ -146,6 +146,12 @@ struct ParsedFileNameTests {
         #expect(!NameUtil.isRph("CA123"))
     }
 
+    @Test func testIsRoofPose() async throws {
+        #expect(NameUtil.isRoofPose("RPH"))
+        #expect(NameUtil.isRoofPose("RPD"))
+        #expect(!NameUtil.isRoofPose("CA123"))
+    }
+
     @Test func testIsDecoration() async throws {
         let resourceNameIv = "VI" + [randomInt, randomInt, randomInt].lazy.map(String.init).joined()
         #expect(NameUtil.isDecoration(resourceNameIv))

@@ -20,14 +20,12 @@ final class SnoopyViewModel: ObservableObject {
 
     func moveToTheNextAnimation(scene: SnoopyScene) async {
         if let finishedAnimation = model.currentAnimation {
-            if let nextAnimation = model.nextAnimationOnJumpGraph(source: finishedAnimation) {
-                if model.isAnimationRph(nextAnimation) {
-                    model.startRandomDream()
-                } else {
-                    model.startAnimation(nextAnimation)
-                }
-            } else if NameUtil.isDream(finishedAnimation.name) {
-                model.startRph()
+            if NameUtil.isDream(finishedAnimation.name) {
+                model.startWakeAnimation()
+            } else if NameUtil.isRoofPose(finishedAnimation.name) && !finishedAnimation.designated {
+                model.startRandomDream()
+            } else if let nextAnimation = model.nextAnimationOnJumpGraph(source: finishedAnimation) {
+                model.startAnimation(nextAnimation)
             } else {
                 model.startRandomAnimation()
             }

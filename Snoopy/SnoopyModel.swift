@@ -76,6 +76,11 @@ struct SnoopyModel {
         currentAnimation = animations.rph.randomElement()
     }
     
+    mutating func startWakeAnimation() {
+        Log.info("start wake animation")
+        currentAnimation = animations.wakeAnimations.randomElement() ?? animations.rph.randomElement()
+    }
+    
     mutating func startAnimation(_ animation: Animation) {
         Log.info("start designated animation")
         currentAnimation = animation
