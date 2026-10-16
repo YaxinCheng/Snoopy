@@ -22,7 +22,7 @@ final class SnoopyViewModel: ObservableObject {
         if let finishedAnimation = model.currentAnimation {
             if NameUtil.isDream(finishedAnimation.name) {
                 model.startWakeAnimation()
-            } else if NameUtil.isRoofPose(finishedAnimation.name) && !finishedAnimation.designated {
+            } else if NameUtil.isRoofPose(finishedAnimation.name), !finishedAnimation.designated {
                 model.startRandomDream()
             } else if let nextAnimation = model.nextAnimationOnJumpGraph(source: finishedAnimation) {
                 model.startAnimation(nextAnimation)

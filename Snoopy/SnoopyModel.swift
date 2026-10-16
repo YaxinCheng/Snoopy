@@ -8,14 +8,14 @@
 import Cocoa
 
 private let BACKGROUND_COLOURS: [NSColor] = [
-    .systemBlue,
-    .systemYellow,
-    .systemCyan,
-    .systemGray,
-    .systemMint,
-    .systemIndigo,
-    .systemOrange,
-    .cyan,
+    NSColor(r: 136, g: 189, b: 242),
+    NSColor(r: 212, g: 222, b: 149),
+    NSColor(r: 227, g: 83, b: 54),
+    .systemMint.blended(withFraction: 0.5, of: .white)!,
+    .systemYellow.blended(withFraction: 0.5, of: .white)!,
+    .systemIndigo.blended(withFraction: 0.5, of: .white)!,
+    .systemOrange.blended(withFraction: 0.3, of: .white)!,
+    .systemGreen.blended(withFraction: 0.5, of: .white)!
 ]
 
 struct SnoopyModel {
