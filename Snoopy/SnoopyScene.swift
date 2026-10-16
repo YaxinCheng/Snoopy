@@ -75,7 +75,7 @@ final class SnoopyScene: SKScene {
                 let (colorNode, backgroundNode, houseNode) = try await (
                     setupColor,
                     setupBackground,
-                    setupSnoopyHouse,
+                    setupSnoopyHouse
                 )
                 await MainActor.run {
                     self.addChild(colorNode)
@@ -126,19 +126,18 @@ final class SnoopyScene: SKScene {
     private func setupSceneFromPureVideoClip(_ clip: Clip<URL>) async {
         let playItems = await Batch.asyncLoad(urls: Self.expandUrls(from: clip), transform: AVPlayerItem.load(url:))
         let player = AVQueuePlayer(items: playItems)
+        await playItems.first?.ready()
+
         let videoNode = SKVideoNode(avPlayer: player).fullscreen(in: self)
         addChild(videoNode)
-        self.videoNode = videoNode
-
         videoDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: playItems.last).sink { [weak self] _ in
             Log.info("video animation finished playing: \(playItems.last!)")
             self?._didFinishPlaying.send()
         }
 
-        await playItems.first?.ready()
-        await Self.forceLoadingFirstFrame(player: player)
+        await startPlaybackAndWaitForFirstFrame(videoNode: videoNode, player: player)
+        self.videoNode = videoNode
         imageNode = nil
-        videoNode.play()
     }
 
     /// setupSceneFromDreamVideoClip sets up the scene for dreaming video clips.
@@ -150,7 +149,6 @@ final class SnoopyScene: SKScene {
         )
         let transitionVideoNode = SKVideoNode(avPlayer: transitionPlayer).fullscreen(in: self)
         addChild(transitionVideoNode)
-        videoNode = transitionVideoNode
 
         let dreamVideoNode = MaskedVideoNode(videoNode:
             SKVideoNode(avPlayer: dreamPlayer).fullscreen(in: self))
@@ -162,37 +160,43 @@ final class SnoopyScene: SKScene {
         var introMaskCache: MaskCache?
         if !introTransition.isEmpty { // has intro transition
             introMaskCache = MaskCache(mask: mask.mask.intro!, outline: mask.outline.intro!)
-
-            await introTransition.first?.ready()
-            await Self.forceLoadingFirstFrame(player: transitionPlayer)
+            await startPlaybackAndWaitForFirstFrame(videoNode: transitionVideoNode, player: transitionPlayer)
+            videoNode = transitionVideoNode
             imageNode = nil
-            transitionVideoNode.play()
         } else { // no intro, direct to dream
-            dreamVideoNode.unhideAndPlay()
+            videoNode = transitionVideoNode
+            dreamVideoNode.isHidden = false
+            await startPlaybackAndWaitForFirstFrame(videoNode: dreamVideoNode, player: dreamPlayer)
+            imageNode = nil
         }
 
-        videoDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: nil).sink {
-            [weak self, weak transitionPlayer, weak transitionVideoNode, weak dreamVideoNode] notification in
+        videoDidFinishPlayingObserver = NotificationCenter.default.publisher(
+            for: AVPlayerItem.didPlayToEndTimeNotification,
+            object: nil
+        ).sink { [weak self, weak transitionPlayer, weak transitionVideoNode, weak dreamVideoNode, weak dreamPlayer] notification in
             guard let item = notification.object as? AVPlayerItem else { return }
             if item === outroTransition.last {
                 Log.info("video animation finished playing: \(item)")
                 self?._didFinishPlaying.send()
             } else if item === introTransition.last {
                 Task {
-                    dreamVideoNode?.isHidden = false
-                    if dreamVideoNode != nil {
-                        await self?.playMask(cropNode: dreamVideoNode!, maskCache: introMaskCache!)
+                    if let dreamVideoNode, let dreamPlayer {
+                        await self?.startPlaybackAndWaitForFirstFrame(videoNode: dreamVideoNode, player: dreamPlayer)
+                        dreamVideoNode.isHidden = false
+                        await self?.playMask(cropNode: dreamVideoNode, maskCache: introMaskCache!)
                     }
-                    dreamVideoNode?.play()
                     transitionPlayer?.advanceToNextItem()
+                    await outroTransition.first?.ready()
                 }
             } else if item === playItems.last {
                 Task {
-                    if dreamVideoNode != nil {
-                        await self?.playMask(cropNode: dreamVideoNode!, maskCache: outroMaskCache)
+                    if let transitionVideoNode, let transitionPlayer {
+                        await self?.startPlaybackAndWaitForFirstFrame(videoNode: transitionVideoNode, player: transitionPlayer)
                     }
-                    dreamVideoNode?.removeFromParent()
-                    transitionVideoNode?.play()
+                    if let dreamVideoNode {
+                        await self?.playMask(cropNode: dreamVideoNode, maskCache: outroMaskCache)
+                        dreamVideoNode.removeFromParent()
+                    }
                 }
             }
         }
@@ -202,14 +206,17 @@ final class SnoopyScene: SKScene {
         async let introTransitionLoad = OptionalToArray(transition.intro.asyncMap(AVPlayerItem.load(url:)))
         async let outroTransitionLoad = OptionalToArray(transition.outro.asyncMap(AVPlayerItem.load(url:)))
         let (introTransition, outroTransition) = await (introTransitionLoad, outroTransitionLoad)
-        let player = AVQueuePlayer(items: introTransition + outroTransition)
+        let allItems = introTransition + outroTransition
+        let player = AVQueuePlayer(items: allItems)
         player.actionAtItemEnd = .pause
+        await allItems.first?.ready()
         return (player, introTransition, outroTransition)
     }
 
     private func setupDreamPlayerAndItems(clip: Clip<URL>) async -> (player: AVQueuePlayer, items: [AVPlayerItem]) {
         let playItems = await Batch.asyncLoad(urls: Self.expandUrls(from: clip), transform: AVPlayerItem.load(url:))
         let player = AVQueuePlayer(items: playItems)
+        await playItems.first?.ready()
         return (player, playItems)
     }
 
@@ -249,7 +256,7 @@ final class SnoopyScene: SKScene {
                 self?.decorationDidFinishPlayingObserver = nil
             }
         }
-        self.decorationNode = activeDecorationNode
+        decorationNode = activeDecorationNode
 
         Task { [weak self, weak activeDecorationNode] in
             await self?.imageNode?.play(timePerFrame: IMAGES_SEQ_INTERVAL)
@@ -280,10 +287,67 @@ final class SnoopyScene: SKScene {
         decorationNode = nil
     }
 
-    /// forceLoadingFirstFrame is a function that forces player to load the first frame and wait for it.
-    /// This is used to fix the flickering issue.
-    private static func forceLoadingFirstFrame(player: AVPlayer) async {
-        await player.seek(to: .zero)
+    /// Prerolls the player, starts playback, and suspends until the first video frame
+    /// has been rendered by SpriteKit before removing the previous node.
+    private func startPlaybackAndWaitForFirstFrame(videoNode: SKVideoNode, player: AVPlayer) async {
+        await player.currentItem?.ready()
+        if player.status == .readyToPlay {
+            _ = await player.preroll(atRate: 1.0)
+        }
+        videoNode.play()
+        await Self.waitForPlaybackToAdvance(player: player)
+        await run(SKAction.wait(forDuration: 2.0 / 60.0))
+    }
+
+    private func startPlaybackAndWaitForFirstFrame(videoNode: MaskedVideoNode, player: AVPlayer) async {
+        await player.currentItem?.ready()
+        if player.status == .readyToPlay {
+            _ = await player.preroll(atRate: 1.0)
+        }
+        videoNode.play()
+        await Self.waitForPlaybackToAdvance(player: player)
+        await run(SKAction.wait(forDuration: 2.0 / 60.0))
+    }
+
+    /// Suspends until `player`'s media clock actually advances past `.zero` (or fails/times out).
+    @MainActor
+    private static func waitForPlaybackToAdvance(player: AVPlayer) async {
+        guard let item = player.currentItem, item.status != .failed, player.status != .failed else {
+            return
+        }
+        let minimumRenderedTime = CMTime(seconds: 0.08, preferredTimescale: 600)
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            final class ObserverState: @unchecked Sendable {
+                var token: Any?
+                var resumed = false
+            }
+            let state = ObserverState()
+            let interval = CMTime(value: 1, timescale: 120)
+
+            state.token = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak player] time in
+                guard !state.resumed else { return }
+                let failed = player?.status == .failed || player?.currentItem?.status == .failed
+                if time >= minimumRenderedTime || failed {
+                    state.resumed = true
+                    if let token = state.token {
+                        player?.removeTimeObserver(token)
+                        state.token = nil
+                    }
+                    continuation.resume()
+                }
+            }
+
+            // Safety fallback in case an item cannot advance
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak player] in
+                guard !state.resumed else { return }
+                state.resumed = true
+                if let token = state.token {
+                    player?.removeTimeObserver(token)
+                    state.token = nil
+                }
+                continuation.resume()
+            }
+        }
     }
 }
 
