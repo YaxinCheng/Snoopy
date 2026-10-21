@@ -126,20 +126,16 @@ struct AnimationCollection {
     let dreamTransitions: [Clip<URL>]
     let specialTransitions: [Clip<URL>]
     let decorations: [Animation]
-    /// rph for lack of better terms is a kind of animation that bridges transition to and from sleepy snoopy.
-    /// It will also be part of the jump graph.
-    let rph: Set<Animation>
     let wakeAnimations: [Animation]
     let specialImages: [URL] // images that will be used as decorations
     let background: URL?
 
-    private init(graph: JumpGraph, dreams: [Animation], dreamTransitions: [Clip<URL>], specialTransitions: [Clip<URL>], decorations: [Animation], rph: Set<Animation>, wakeAnimations: [Animation], masks: [String: Mask], specialImages: [URL], background: URL?) {
+    private init(graph: JumpGraph, dreams: [Animation], dreamTransitions: [Clip<URL>], specialTransitions: [Clip<URL>], decorations: [Animation], wakeAnimations: [Animation], masks: [String: Mask], specialImages: [URL], background: URL?) {
         self.jumpGraph = graph
         self.dreams = dreams
         self.dreamTransitions = dreamTransitions
         self.specialTransitions = specialTransitions
         self.decorations = decorations
-        self.rph = rph
         self.wakeAnimations = wakeAnimations
         self.masks = masks
         self.specialImages = specialImages
@@ -156,7 +152,6 @@ struct AnimationCollection {
         var dreams: [Animation] = []
         var dreamTransitions: [Clip<URL>] = []
         var decorations: [Animation] = []
-        var rph: Set<Animation> = []
         var wakeAnimations: [Animation] = []
         var index = 0
         while index < files.count {
@@ -194,7 +189,6 @@ struct AnimationCollection {
                         decorations.append(contentsOf: animationContext.map(\.animation))
                     } else {
                         if NameUtil.isRph(resourceName) {
-                            rph.formUnion(animationContext.lazy.map(\.animation).filter { !$0.designated })
                             wakeAnimations.append(contentsOf: animationContext.map(\.animation).filter { $0.designated })
                         }
                         allContexts.append(contentsOf: animationContext)
@@ -205,15 +199,11 @@ struct AnimationCollection {
                 unreachable("unexpected file: \(fileURL.path())")
             }
         }
-        if wakeAnimations.isEmpty {
-            wakeAnimations = Array(rph)
-        }
         return AnimationCollection(graph: createJumpGraph(context: allContexts),
                                    dreams: dreams,
                                    dreamTransitions: dreamTransitions,
                                    specialTransitions: specialTransitions,
                                    decorations: decorations,
-                                   rph: rph,
                                    wakeAnimations: wakeAnimations,
                                    masks: masks,
                                    specialImages: specialImages,
@@ -373,8 +363,7 @@ struct AnimationCollection {
                 case true: destinationAnimations.values.flatMap { $0 }
                 case false: destinationAnimations[String(suffix)] ?? []
                 }
-                let idleAnimations = animations.filter { !$0.designated }
-                let targetAnimations = idleAnimations.isEmpty ? animations : idleAnimations
+                let targetAnimations = animations.filter { !$0.designated }
                 jumpGraph[c.animation]?.append(contentsOf: targetAnimations)
             }
         }

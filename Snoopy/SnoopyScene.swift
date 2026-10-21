@@ -13,7 +13,7 @@ private let HOUSE_SCALE: CGFloat = 720 / 1080
 private let HOUSE_Y_OFFSET: CGFloat = 180 / 1080
 private let LOOP_REPEAT_LIMIT: UInt = 8
 private let IMAGES_SEQ_INTERVAL: TimeInterval = 0.06
-private let MASK_INTERVAL: TimeInterval = 0.06
+private let MASK_INTERVAL: TimeInterval = 0.03
 private let TOP_Z_PRIORITY: CGFloat = 11
 private let SECONDARY_Z_PRIORITY: CGFloat = 10
 
@@ -235,34 +235,80 @@ final class SnoopyScene: SKScene {
     }
 
     private func setUpSceneFromImageSequenceClip(_ clip: Clip<ImageSequence>, decoration: Animation?) async {
-        async let imageNodeLoad = AnimatedImageNode.asyncCreate(contentsOf: Self.expandUrls(from: clip)).fullscreen(in: self)
-        let decorationURLs = decoration.map { Self.expandUrls(from: $0.unwrapToVideo()) }
-        async let decorationItemsLoad = Batch.asyncLoad(urls: decorationURLs ?? [], transform: AVPlayerItem.load(url:))
-        let (imageNode, decorationItems) = await (imageNodeLoad, decorationItemsLoad)
+        let shouldLoadDecoration = (decorationNode == nil) && (decoration != nil)
+        let decorationURLs = shouldLoadDecoration ? decoration.map { Self.expandUrls(from: $0.unwrapToVideo()) } : nil
+        let decorationItems = await Batch.asyncLoad(urls: decorationURLs ?? [], transform: AVPlayerItem.load(url:))
+        let decorationDuration = await Self.totalDuration(of: decorationItems)
+
+        let expandedImageUrls = Self.expandUrls(from: clip, minDuration: decorationDuration)
+        let imageNode = await AnimatedImageNode.asyncCreate(contentsOf: expandedImageUrls).fullscreen(in: self)
+
         addChild(imageNode)
         self.imageNode = imageNode
         videoNode = nil
 
-        var activeDecorationNode: SKVideoNode?
         if !decorationItems.isEmpty {
             Log.debug("decoration triggered: \(decoration!.name)")
-            let node = SKVideoNode(avPlayer: AVQueuePlayer(items: decorationItems)).fullscreen(in: self)
-            addChild(node)
+            let player = AVQueuePlayer(items: decorationItems)
+            await decorationItems.first?.ready()
+            let node = SKVideoNode(avPlayer: player).fullscreen(in: self)
             node.zPosition = SECONDARY_Z_PRIORITY
-            node.play()
-            activeDecorationNode = node
-            decorationDidFinishPlayingObserver = NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: decorationItems.last).sink { [weak self, weak node] _ in
-                node?.removeFromParent()
-                self?.decorationDidFinishPlayingObserver = nil
-            }
-        }
-        decorationNode = activeDecorationNode
+            addChild(node)
+            decorationNode = node
 
-        Task { [weak self, weak activeDecorationNode] in
+            decorationDidFinishPlayingObserver = NotificationCenter.default
+                .publisher(for: AVPlayerItem.didPlayToEndTimeNotification, object: decorationItems.last)
+                .sink { [weak self] _ in
+                    self?.decorationNode = nil
+                    self?.decorationDidFinishPlayingObserver = nil
+                }
+            await startPlaybackAndWaitForFirstFrame(videoNode: node, player: player)
+        }
+
+        Task { [weak self] in
             await self?.imageNode?.play(timePerFrame: IMAGES_SEQ_INTERVAL)
-            activeDecorationNode?.removeFromParent()
             self?._didFinishPlaying.send()
         }
+    }
+
+    private static func totalDuration(of items: [AVPlayerItem]) async -> TimeInterval {
+        var total: TimeInterval = 0
+        for item in items {
+            if let duration = try? await item.asset.load(.duration), duration.isNumeric {
+                total += duration.seconds
+            }
+        }
+        return total
+    }
+
+    private static func expandUrls(from imageSequenceClip: Clip<ImageSequence>, minDuration: TimeInterval = 0) -> [URL] {
+        let introUrls = OptionalToArray(imageSequenceClip.intro?.urls)
+        let loopUrls = OptionalToArray(imageSequenceClip.loop?.urls)
+        let outroUrls = OptionalToArray(imageSequenceClip.outro?.urls)
+
+        var loopRepeatingLimit = UInt.random(in: 1...LOOP_REPEAT_LIMIT)
+
+        if minDuration > 0 {
+            let fixedDuration = Double(introUrls.count + outroUrls.count) * IMAGES_SEQ_INTERVAL
+            let remainingDuration = minDuration - fixedDuration
+            if remainingDuration > 0 {
+                if !loopUrls.isEmpty {
+                    let singleLoopDuration = Double(loopUrls.count) * IMAGES_SEQ_INTERVAL
+                    let neededLoops = UInt(ceil(remainingDuration / singleLoopDuration))
+                    loopRepeatingLimit = max(loopRepeatingLimit, neededLoops)
+                } else if !introUrls.isEmpty, outroUrls.isEmpty {
+                    // Whole animation stored in `intro` with no separate `loop` or `outro`
+                    let singleIntroDuration = Double(introUrls.count) * IMAGES_SEQ_INTERVAL
+                    let neededRepeats = UInt(ceil(minDuration / singleIntroDuration))
+                    return Array(introUrls.repeat(count: max(1, neededRepeats)))
+                }
+            }
+        }
+
+        var result = introUrls
+        result.append(contentsOf: loopUrls.repeat(count: loopRepeatingLimit))
+        result.append(contentsOf: outroUrls)
+        return result
     }
 
     private static func expandUrls(from videoClip: Clip<URL>) -> [URL] {
@@ -283,8 +329,6 @@ final class SnoopyScene: SKScene {
 
     private func cleanup() {
         videoDidFinishPlayingObserver = nil
-        decorationDidFinishPlayingObserver = nil
-        decorationNode = nil
     }
 
     /// Prerolls the player, starts playback, and suspends until the first video frame
@@ -348,6 +392,11 @@ final class SnoopyScene: SKScene {
                 continuation.resume()
             }
         }
+    }
+    
+    func stopDecoration() {
+        decorationNode = nil
+        decorationDidFinishPlayingObserver = nil
     }
 }
 

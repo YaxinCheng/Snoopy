@@ -28,7 +28,7 @@ struct SnoopyModel {
     
     var currentAnimation: Animation? {
         willSet {
-            Log.debug("current animation: \(currentAnimation?.name ?? "nil"), next animation: \(newValue?.name ?? "nil")")
+            Log.debug("finished animation: \(currentAnimation?.name ?? "nil"), next animation: \(newValue?.name ?? "nil")")
             let isFirstAnimation = currentAnimation == nil
             let needsMask = isFirstAnimation || (newValue.map(\.name).map(NameUtil.isDream) ?? false)
             if needsMask {
@@ -37,12 +37,14 @@ struct SnoopyModel {
                 currentMask = nil
                 currentTransition = nil
             }
-            if newValue?.isImageSequence == true {
+            if let newValue, newValue.isImageSequence, !newValue.designated {
                 decoration = if Int.random(in: 0 ... 9) >= 9 { // Only 10% of the time that we should have a decoration
                     animations.decorations.randomElement()
                 } else {
                     nil
                 }
+            } else {
+                decoration = nil
             }
         }
     }
@@ -71,14 +73,9 @@ struct SnoopyModel {
         currentAnimation = animations.dreams.randomElement()
     }
     
-    mutating func startRph() {
-        Log.info("start rph animation")
-        currentAnimation = animations.rph.randomElement()
-    }
-    
     mutating func startWakeAnimation() {
         Log.info("start wake animation")
-        currentAnimation = animations.wakeAnimations.randomElement() ?? animations.rph.randomElement()
+        currentAnimation = animations.wakeAnimations.randomElement()
     }
     
     mutating func startAnimation(_ animation: Animation) {
@@ -88,9 +85,5 @@ struct SnoopyModel {
 
     func nextAnimationOnJumpGraph(source: Animation) -> Animation? {
         animations.jumpGraph[source]?.randomElement()
-    }
-    
-    func isAnimationRph(_ animation: Animation) -> Bool {
-        animations.rph.contains(animation)
     }
 }

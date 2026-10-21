@@ -34,6 +34,7 @@ Here is what you can do to solve it:
 * [Optioanl] tvOS Simulator (if you don't already have the video & image resource files)
 
 ### Get Resource Files
+
 This project relies on the resource files from the tvOS simulator.
 Please copy the files into the existing `Resources` folder at the project root level (`Snoopy/Resources`).
 
@@ -48,6 +49,10 @@ A simplified version on how to do it is:
 * remove unused files (not sure why the same masks are represented in both mov and heic, so this project just uses the heic version)
     * `rm Resources/*Mask*.mov`
     * `rm Resources/*Outline*.mov`
+
+#### Full Resources
+I have noticed that there are more resources than I originally extracted from the simulator.
+You can download the full list from this [Google Drive](https://drive.google.com/file/d/1nMUCcU_zkRBOaJ5IQS8BWdLUJLnOv4Ai/view).
 
 ### Compile
 1. Download the code

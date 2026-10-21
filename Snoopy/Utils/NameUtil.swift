@@ -55,6 +55,10 @@ enum NameUtil {
         resourceName.starts(with: "AS")
     }
 
+    static func isSpecialDream<S: StringProtocol>(_ resourceName: S) -> Bool {
+        resourceName.starts(with: "SS")
+    }
+
     static func isDreamTransition<S: StringProtocol>(_ resourceName: S) -> Bool {
         resourceName.starts(with: "ST")
     }
