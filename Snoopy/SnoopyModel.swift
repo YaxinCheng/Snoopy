@@ -29,14 +29,6 @@ struct SnoopyModel {
     var currentAnimation: Animation? {
         willSet {
             Log.debug("finished animation: \(currentAnimation?.name ?? "nil"), next animation: \(newValue?.name ?? "nil")")
-            let isFirstAnimation = currentAnimation == nil
-            let needsMask = isFirstAnimation || (newValue.map(\.name).map(NameUtil.isDream) ?? false)
-            if needsMask {
-                (currentTransition, currentMask) = isFirstAnimation ? animations.firstTransitionAndMask() : animations.randomTransitionAndMask()
-            } else {
-                currentMask = nil
-                currentTransition = nil
-            }
             if let newValue, newValue.isImageSequence, !newValue.designated {
                 decoration = if Int.random(in: 0 ... 9) >= 9 { // Only 10% of the time that we should have a decoration
                     animations.decorations.randomElement()
@@ -54,6 +46,7 @@ struct SnoopyModel {
     private(set) var backgroundColor: NSColor = BACKGROUND_COLOURS.randomElement()!
     private(set) var snoopyHouse: URL
     private(set) var decoration: Animation?
+    private(set) var specialConnection: Clip<ImageSequence>?
     
     init() {
         snoopyHouse = animations.specialImages.randomElement()!
@@ -63,27 +56,77 @@ struct SnoopyModel {
         animations.background
     }
     
-    mutating func startRandomAnimation() {
-        Log.info("start random animation")
-        currentAnimation = animations.jumpGraph.keys.randomElement()
+    enum NextAnimationKind {
+        case normal
+        case dream
     }
-
+    
     mutating func startRandomDream() {
-        Log.info("start random dream")
-        currentAnimation = animations.dreams.randomElement()
+        startAnimation(randomDream())
     }
     
-    mutating func startWakeAnimation() {
-        Log.info("start wake animation")
-        currentAnimation = animations.wakeAnimations.randomElement()
+    /// Move to the next animation
+    mutating func moveToTheNextAnimation() -> NextAnimationKind {
+        specialConnection = nil
+        if let finishedAnimation = currentAnimation {
+            if NameUtil.isDream(finishedAnimation.name) {
+                startAnimation(wakeAnimation())
+            } else if NameUtil.isRoofPose(finishedAnimation.name), !finishedAnimation.designated {
+                startAnimation(randomDream())
+                let shouldStartSpecialConnection = Int.random(in: 0 ... 9) >= 9 // 10% of chance
+                if shouldStartSpecialConnection {
+                    startSpecialConnection()
+                }
+                return .dream
+            } else if let nextAnimation = nextAnimationOnJumpGraph(source: finishedAnimation) {
+                startAnimation(nextAnimation)
+            } else {
+                startAnimation(randomAnimation())
+            }
+        }
+        return .normal
     }
     
-    mutating func startAnimation(_ animation: Animation) {
-        Log.info("start designated animation")
+    private mutating func startAnimation(_ animation: Animation) {
+        Log.info("start animation: \(animation.name)")
+        let isFirstAnimation = currentAnimation == nil
         currentAnimation = animation
+        let needsMask = NameUtil.isDream(animation.name)
+        if needsMask {
+            (currentTransition, currentMask) = isFirstAnimation ? animations.outroTransitionAndMask() : animations.randomTransitionAndMask()
+        } else {
+            currentMask = nil
+            currentTransition = nil
+        }
     }
 
-    func nextAnimationOnJumpGraph(source: Animation) -> Animation? {
-        animations.jumpGraph[source]?.randomElement()
+    private mutating func startSpecialConnection() {
+        specialConnection = animations.specialConnections.randomElement()!.unwrapToImageSequence()
+        currentTransition = animations.randomNonDreamyTransition()
+        currentMask = animations.randomMask()
+    }
+    
+    private func randomAnimation() -> Animation {
+        let animation = animations.jumpGraph.keys.randomElement()!
+        Log.info("start random animation: \(animation.name)")
+        return animation
+    }
+
+    private func randomDream() -> Animation {
+        let animation = animations.dreams.randomElement()!
+        Log.info("start random dream: \(animation.name)")
+        return animation
+    }
+    
+    private func wakeAnimation() -> Animation {
+        let animation = animations.wakeAnimations.randomElement()!
+        Log.info("start wake animation: \(animation)")
+        return animation
+    }
+    
+    private func nextAnimationOnJumpGraph(source: Animation) -> Animation? {
+        let animation = animations.jumpGraph[source]?.randomElement()
+        Log.info("next animation on jump graph: \"\(source.name)\" => \"\(animation?.name ?? "nil")\"")
+        return animation
     }
 }

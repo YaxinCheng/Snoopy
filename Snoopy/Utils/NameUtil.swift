@@ -55,12 +55,12 @@ enum NameUtil {
         resourceName.starts(with: "AS")
     }
 
-    static func isSpecialDream<S: StringProtocol>(_ resourceName: S) -> Bool {
-        resourceName.starts(with: "SS")
-    }
-
     static func isDreamTransition<S: StringProtocol>(_ resourceName: S) -> Bool {
         resourceName.starts(with: "ST")
+    }
+    
+    static func isNonDreamyTransition<S: StringProtocol>(_ resourceName: S) -> Bool {
+        resourceName == "ST001" || resourceName == "ST005"
     }
 
     static func isMask<S: StringProtocol>(_ resourceName: S) -> Bool {
@@ -81,6 +81,10 @@ enum NameUtil {
 
     static func isSpecialTransition<S: StringProtocol>(_ resourceName: S) -> Bool {
         resourceName == "ST006"
+    }
+
+    static func isSpecialConnection<S: StringProtocol>(_ resourceName: S) -> Bool {
+        resourceName.starts(with: "SS")
     }
 
     static func splitAnimationName<S: StringProtocol>(_ name: S) -> (S.SubSequence, S.SubSequence) {

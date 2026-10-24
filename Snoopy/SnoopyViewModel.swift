@@ -15,21 +15,12 @@ final class SnoopyViewModel: ObservableObject {
         if model.currentAnimation == nil {
             model.startRandomDream()
         }
-        await scene.setup(animation: model.currentAnimation!, backgroundColor: model.backgroundColor, background: model.background, snoopyHouse: model.snoopyHouse, mask: model.currentMask, transition: model.currentTransition, decoration: model.decoration)
+        await scene.setup(animation: model.currentAnimation!, backgroundColor: model.backgroundColor, background: model.background, snoopyHouse: model.snoopyHouse, mask: model.currentMask, transition: model.currentTransition, decoration: model.decoration, specialConnection: model.specialConnection)
     }
 
     func moveToTheNextAnimation(scene: SnoopyScene) async {
-        if let finishedAnimation = model.currentAnimation {
-            if NameUtil.isDream(finishedAnimation.name) {
-                model.startWakeAnimation()
-            } else if NameUtil.isRoofPose(finishedAnimation.name), !finishedAnimation.designated {
-                scene.stopDecoration()
-                model.startRandomDream()
-            } else if let nextAnimation = model.nextAnimationOnJumpGraph(source: finishedAnimation) {
-                model.startAnimation(nextAnimation)
-            } else {
-                model.startRandomAnimation()
-            }
+        if case .dream = model.moveToTheNextAnimation() {
+            scene.stopDecoration()
         }
         await setup(scene: scene)
     }

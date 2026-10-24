@@ -123,18 +123,23 @@ struct AnimationCollection {
     let jumpGraph: JumpGraph // key: Animation, value: animations can be jumpped from the current animation
     let masks: [String: Mask]
     let dreams: [Animation]
+    /// animations when snoopy transits into a dream and out of a dream
     let dreamTransitions: [Clip<URL>]
+    /// animations when snoopy transits out of a dream, this one only has outro
     let specialTransitions: [Clip<URL>]
+    // animations that connects between a transition to a dream, these are full screen image animations
+    let specialConnections: [Animation]
     let decorations: [Animation]
     let wakeAnimations: [Animation]
     let specialImages: [URL] // images that will be used as decorations
     let background: URL?
 
-    private init(graph: JumpGraph, dreams: [Animation], dreamTransitions: [Clip<URL>], specialTransitions: [Clip<URL>], decorations: [Animation], wakeAnimations: [Animation], masks: [String: Mask], specialImages: [URL], background: URL?) {
+    private init(graph: JumpGraph, dreams: [Animation], dreamTransitions: [Clip<URL>], specialTransitions: [Clip<URL>], specialConnections: [Animation], decorations: [Animation], wakeAnimations: [Animation], masks: [String: Mask], specialImages: [URL], background: URL?) {
         self.jumpGraph = graph
         self.dreams = dreams
         self.dreamTransitions = dreamTransitions
         self.specialTransitions = specialTransitions
+        self.specialConnections = specialConnections
         self.decorations = decorations
         self.wakeAnimations = wakeAnimations
         self.masks = masks
@@ -146,6 +151,7 @@ struct AnimationCollection {
         let files = files.sorted(using: FileSortComparator())
         var specialImages: [URL] = []
         var specialTransitions: [Clip<URL>] = []
+        var specialConnections: [Animation] = []
         var background: URL?
         var allContexts = [AnimationContext]()
         var masks: [String: Mask] = [:]
@@ -187,6 +193,8 @@ struct AnimationCollection {
                         dreamTransitions.append(contentsOf: animationContext.map(\.animation).map { $0.unwrapToVideo() })
                     } else if NameUtil.isDecoration(resourceName) {
                         decorations.append(contentsOf: animationContext.map(\.animation))
+                    } else if NameUtil.isSpecialConnection(resourceName) {
+                        specialConnections.append(contentsOf: animationContext.lazy.map(\.animation))
                     } else {
                         if NameUtil.isRph(resourceName) {
                             wakeAnimations.append(contentsOf: animationContext.map(\.animation).filter { $0.designated })
@@ -203,6 +211,7 @@ struct AnimationCollection {
                                    dreams: dreams,
                                    dreamTransitions: dreamTransitions,
                                    specialTransitions: specialTransitions,
+                                   specialConnections: specialConnections,
                                    decorations: decorations,
                                    wakeAnimations: wakeAnimations,
                                    masks: masks,
@@ -363,22 +372,25 @@ struct AnimationCollection {
                 case true: destinationAnimations.values.flatMap { $0 }
                 case false: destinationAnimations[String(suffix)] ?? []
                 }
-                let targetAnimations = animations.filter { !$0.designated }
+                let idleAnimations = animations.filter { !$0.designated }
+                let targetAnimations = idleAnimations.isEmpty ? animations : idleAnimations
                 jumpGraph[c.animation]?.append(contentsOf: targetAnimations)
             }
         }
         return jumpGraph
     }
     
-    func firstTransitionAndMask() -> (transition: Clip<URL>, mask: Mask) {
+    /// outroTransitionAndMask returns a outro transition + mask with intro and outro
+    func outroTransitionAndMask() -> (transition: Clip<URL>, mask: Mask) {
         let transition = specialTransitions.randomElement()!
         let mask = masks.values.randomElement()!
         return (transition, mask)
     }
     
+    /// randomTransitionAndMask returns intro and outro transition + intro and outro mask
     func randomTransitionAndMask() -> (transition: Clip<URL>, mask: Mask) {
         let transition = dreamTransitions.randomElement()!
-        let mask = if Self.nonDreamyTransitions.contains(transition.name) {
+        let mask = if NameUtil.isNonDreamyTransition(transition.name) {
             masks["TM007"] // line swiping transition
         } else {
             masks.values.randomElement()
@@ -386,10 +398,14 @@ struct AnimationCollection {
         return (transition, mask!)
     }
     
-    /// nonDreamyTransitions are the ones that are not shown as dreamy,
-    /// aka, cannot use the dream bubble mask.
-    /// For them, we specifically use TM007 mask (line swiping).
-    private static let nonDreamyTransitions: Set<String> = ["ST001", "ST005"]
+    func randomNonDreamyTransition() -> Clip<URL> {
+        // TODO: this could be a separate variable for performance, but given the array being small, so no need to do it now.
+        dreamTransitions.lazy.filter { NameUtil.isNonDreamyTransition($0.name) }.randomElement()!
+    }
+    
+    func randomMask() -> Mask {
+        masks.values.randomElement()!
+    }
 }
 
 struct FileSortComparator: SortComparator {

@@ -11,7 +11,7 @@ import SpriteKit
 
 private let HOUSE_SCALE: CGFloat = 720 / 1080
 private let HOUSE_Y_OFFSET: CGFloat = 180 / 1080
-private let LOOP_REPEAT_LIMIT: UInt = 8
+private let LOOP_REPEAT_LIMIT: UInt = 5
 private let IMAGES_SEQ_INTERVAL: TimeInterval = 0.06
 private let MASK_INTERVAL: TimeInterval = 0.03
 private let TOP_Z_PRIORITY: CGFloat = 11
@@ -65,7 +65,22 @@ final class SnoopyScene: SKScene {
     }
 
     /// setup function sets up an animation with given resources.
-    func setup(animation: Animation, backgroundColor: NSColor, background: URL?, snoopyHouse: URL, mask: Mask?, transition: Clip<URL>?, decoration: Animation?) async {
+    func setup(animation: Animation, backgroundColor: NSColor, background: URL?, snoopyHouse: URL, mask: Mask?, transition: Clip<URL>?, decoration: Animation?, specialConnection: Clip<ImageSequence>?) async {
+        await oneTimeSetup(backgroundColor: backgroundColor, background: background, snoopyHouse: snoopyHouse)
+        cleanup()
+        switch animation {
+        case .video(let clip):
+            if NameUtil.isDream(clip.name) {
+                await setupSceneFromDreamVideoClip(clip, mask: mask!, transition: transition!, specialConnection: specialConnection)
+            } else {
+                await setupSceneFromPureVideoClip(clip)
+            }
+        case .imageSequence(let clip):
+            await setUpSceneFromImageSequenceClip(clip, decoration: decoration)
+        }
+    }
+
+    func oneTimeSetup(backgroundColor: NSColor, background: URL?, snoopyHouse: URL) async {
         await setupBackgroundAndSnoopyHouse.execute { [weak self] in
             guard let self else { return }
             do {
@@ -87,18 +102,6 @@ final class SnoopyScene: SKScene {
             } catch {
                 Log.fault("Unable to load initial resources: \(error)")
             }
-        }
-
-        cleanup()
-        switch animation {
-        case .video(let clip):
-            if NameUtil.isDream(clip.name) {
-                await setupSceneFromDreamVideoClip(clip, mask: mask!, transition: transition!)
-            } else {
-                await setupSceneFromPureVideoClip(clip)
-            }
-        case .imageSequence(let clip):
-            await setUpSceneFromImageSequenceClip(clip, decoration: decoration)
         }
     }
 
@@ -141,14 +144,27 @@ final class SnoopyScene: SKScene {
     }
 
     /// setupSceneFromDreamVideoClip sets up the scene for dreaming video clips.
-    private func setupSceneFromDreamVideoClip(_ clip: Clip<URL>, mask: Mask, transition: Clip<URL>) async {
+    private func setupSceneFromDreamVideoClip(_ clip: Clip<URL>, mask: Mask, transition: Clip<URL>, specialConnection: Clip<ImageSequence>?) async {
         async let transitionPlayerLoad = setupTransitionPlayerAndItems(transition: transition)
         async let dreamPlayerLoad = setupDreamPlayerAndItems(clip: clip)
-        let ((transitionPlayer, introTransition, outroTransition), (dreamPlayer, playItems)) = await (
-            transitionPlayerLoad, dreamPlayerLoad
+        async let specialConnectionNodeLoad: AnimatedImageNode? = if let specialConnection {
+            await AnimatedImageNode
+                .asyncCreate(contentsOf: Self.expandUrls(from: specialConnection))
+                .fullscreen(in: self)
+        } else {
+            nil
+        }
+        let ((transitionPlayer, introTransition, outroTransition), (dreamPlayer, playItems), specialConnectionNode) = await (
+            transitionPlayerLoad, dreamPlayerLoad, specialConnectionNodeLoad
         )
         let transitionVideoNode = SKVideoNode(avPlayer: transitionPlayer).fullscreen(in: self)
         addChild(transitionVideoNode)
+
+        if let specialConnectionNode {
+            specialConnectionNode.isHidden = true
+            specialConnectionNode.zPosition = TOP_Z_PRIORITY
+            addChild(specialConnectionNode)
+        }
 
         let dreamVideoNode = MaskedVideoNode(videoNode:
             SKVideoNode(avPlayer: dreamPlayer).fullscreen(in: self))
@@ -159,7 +175,9 @@ final class SnoopyScene: SKScene {
         let outroMaskCache = MaskCache(mask: mask.mask.outro!, outline: mask.outline.outro!)
         var introMaskCache: MaskCache?
         if !introTransition.isEmpty { // has intro transition
-            introMaskCache = MaskCache(mask: mask.mask.intro!, outline: mask.outline.intro!)
+            if specialConnectionNode == nil {
+                introMaskCache = MaskCache(mask: mask.mask.intro!, outline: mask.outline.intro!)
+            }
             await startPlaybackAndWaitForFirstFrame(videoNode: transitionVideoNode, player: transitionPlayer)
             videoNode = transitionVideoNode
             imageNode = nil
@@ -173,20 +191,31 @@ final class SnoopyScene: SKScene {
         videoDidFinishPlayingObserver = NotificationCenter.default.publisher(
             for: AVPlayerItem.didPlayToEndTimeNotification,
             object: nil
-        ).sink { [weak self, weak transitionPlayer, weak transitionVideoNode, weak dreamVideoNode, weak dreamPlayer] notification in
+        ).sink { [weak self, weak transitionPlayer, weak transitionVideoNode, weak dreamVideoNode, weak dreamPlayer, weak specialConnectionNode] notification in
             guard let item = notification.object as? AVPlayerItem else { return }
             if item === outroTransition.last {
                 Log.info("video animation finished playing: \(item)")
                 self?._didFinishPlaying.send()
             } else if item === introTransition.last {
                 Task {
-                    if let dreamVideoNode, let dreamPlayer {
-                        await self?.startPlaybackAndWaitForFirstFrame(videoNode: dreamVideoNode, player: dreamPlayer)
-                        dreamVideoNode.isHidden = false
-                        await self?.playMask(cropNode: dreamVideoNode, maskCache: introMaskCache!)
-                    }
                     transitionPlayer?.advanceToNextItem()
                     await outroTransition.first?.ready()
+
+                    if let specialConnectionNode {
+                        specialConnectionNode.isHidden = false
+                        await specialConnectionNode.play(timePerFrame: IMAGES_SEQ_INTERVAL)
+                        if let dreamVideoNode, let dreamPlayer {
+                            dreamVideoNode.isHidden = false
+                            await self?.startPlaybackAndWaitForFirstFrame(videoNode: dreamVideoNode, player: dreamPlayer)
+                        }
+                        specialConnectionNode.removeFromParent()
+                    } else if let dreamVideoNode, let dreamPlayer {
+                        await self?.startPlaybackAndWaitForFirstFrame(videoNode: dreamVideoNode, player: dreamPlayer)
+                        dreamVideoNode.isHidden = false
+                        if let introMaskCache {
+                            await self?.playMask(cropNode: dreamVideoNode, maskCache: introMaskCache)
+                        }
+                    }
                 }
             } else if item === playItems.last {
                 Task {
@@ -393,7 +422,7 @@ final class SnoopyScene: SKScene {
             }
         }
     }
-    
+
     func stopDecoration() {
         decorationNode = nil
         decorationDidFinishPlayingObserver = nil
