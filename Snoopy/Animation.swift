@@ -126,31 +126,31 @@ struct AnimationCollection {
     /// animations when snoopy transits into a dream and out of a dream
     let dreamTransitions: [Clip<URL>]
     /// animations when snoopy transits out of a dream, this one only has outro
-    let specialTransitions: [Clip<URL>]
+    let outronOnlyTransitions: [Clip<URL>]
     // animations that connects between a transition to a dream, these are full screen image animations
     let specialConnections: [Animation]
     let decorations: [Animation]
     let wakeAnimations: [Animation]
-    let specialImages: [URL] // images that will be used as decorations
+    let snoopyHouses: [URL] // images that will be used as decorations
     let background: URL?
 
-    private init(graph: JumpGraph, dreams: [Animation], dreamTransitions: [Clip<URL>], specialTransitions: [Clip<URL>], specialConnections: [Animation], decorations: [Animation], wakeAnimations: [Animation], masks: [String: Mask], specialImages: [URL], background: URL?) {
+    private init(graph: JumpGraph, dreams: [Animation], dreamTransitions: [Clip<URL>], outroOnlyTransitions: [Clip<URL>], specialConnections: [Animation], decorations: [Animation], wakeAnimations: [Animation], masks: [String: Mask], snoopyHouses: [URL], background: URL?) {
         self.jumpGraph = graph
         self.dreams = dreams
         self.dreamTransitions = dreamTransitions
-        self.specialTransitions = specialTransitions
+        self.outronOnlyTransitions = outroOnlyTransitions
         self.specialConnections = specialConnections
         self.decorations = decorations
         self.wakeAnimations = wakeAnimations
         self.masks = masks
-        self.specialImages = specialImages
+        self.snoopyHouses = snoopyHouses
         self.background = background
     }
     
     static func from(files: [URL]) -> AnimationCollection {
         let files = files.sorted(using: FileSortComparator())
-        var specialImages: [URL] = []
-        var specialTransitions: [Clip<URL>] = []
+        var snoopyHouses: [URL] = []
+        var outroOnlyTransitions: [Clip<URL>] = []
         var specialConnections: [Animation] = []
         var background: URL?
         var allContexts = [AnimationContext]()
@@ -169,13 +169,15 @@ struct AnimationCollection {
             switch fileExtension {
             case PNG_FILE_TYPE:
                 continue
-            case HEIC_FILE_TYPE where NameUtil.isSnoopyHouse(resourceName):
-                specialImages.append(fileURL)
             case HEIC_FILE_TYPE where NameUtil.isBackground(resourceName):
                 background = fileURL
-            case MOV_FILE_TYPE where NameUtil.isSpecialTransition(resourceName):
-                specialTransitions.append(Clip.from(parsedName: ParsedFileName.from(fileName: fileName), sourceFile: fileURL))
+            case MOV_FILE_TYPE where NameUtil.isOutroOnlyTransition(resourceName):
+                outroOnlyTransitions.append(Clip.from(parsedName: ParsedFileName.from(fileName: fileName), sourceFile: fileURL))
             case HEIC_FILE_TYPE, MOV_FILE_TYPE:
+                if NameUtil.isSnoopyHouse(resourceName) {
+                    snoopyHouses.append(fileURL)
+                    continue
+                }
                 let endOfAnimationIndex = files[index...].findFirstUnmatch {
                     $0.lastPathComponent.range(of: "^\\d{3}_\(resourceName).*\\.(heic|mov)$", options: .regularExpression) != nil
                 }
@@ -210,12 +212,12 @@ struct AnimationCollection {
         return AnimationCollection(graph: createJumpGraph(context: allContexts),
                                    dreams: dreams,
                                    dreamTransitions: dreamTransitions,
-                                   specialTransitions: specialTransitions,
+                                   outroOnlyTransitions: outroOnlyTransitions,
                                    specialConnections: specialConnections,
                                    decorations: decorations,
                                    wakeAnimations: wakeAnimations,
                                    masks: masks,
-                                   specialImages: specialImages,
+                                   snoopyHouses: snoopyHouses,
                                    background: background)
     }
     
@@ -382,7 +384,7 @@ struct AnimationCollection {
     
     /// outroTransitionAndMask returns a outro transition + mask with intro and outro
     func outroTransitionAndMask() -> (transition: Clip<URL>, mask: Mask) {
-        let transition = specialTransitions.randomElement()!
+        let transition = outronOnlyTransitions.randomElement()!
         let mask = masks.values.randomElement()!
         return (transition, mask)
     }

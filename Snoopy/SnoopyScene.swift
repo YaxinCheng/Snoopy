@@ -55,6 +55,7 @@ final class SnoopyScene: SKScene {
 
     /// setupBackgroundAndSnoopyHouse is a once token that executes a given function only once per program run.
     private lazy var setupBackgroundAndSnoopyHouse = AsyncOnce()
+    private var snoopyHouseVideoLoop: AVPlayerLooper?
 
     private let _didFinishPlaying = PassthroughSubject<Void, Never>()
 
@@ -66,7 +67,7 @@ final class SnoopyScene: SKScene {
 
     /// setup function sets up an animation with given resources.
     func setup(animation: Animation, backgroundColor: NSColor, background: URL?, snoopyHouse: URL, mask: Mask?, transition: Clip<URL>?, decoration: Animation?, specialConnection: Clip<ImageSequence>?) async {
-        await oneTimeSetup(backgroundColor: backgroundColor, background: background, snoopyHouse: snoopyHouse)
+        await setupBackgroundAndHouse(backgroundColor: backgroundColor, background: background, snoopyHouse: snoopyHouse)
         cleanup()
         switch animation {
         case .video(let clip):
@@ -80,7 +81,7 @@ final class SnoopyScene: SKScene {
         }
     }
 
-    func oneTimeSetup(backgroundColor: NSColor, background: URL?, snoopyHouse: URL) async {
+    func setupBackgroundAndHouse(backgroundColor: NSColor, background: URL?, snoopyHouse: URL) async {
         await setupBackgroundAndSnoopyHouse.execute { [weak self] in
             guard let self else { return }
             do {
@@ -98,6 +99,7 @@ final class SnoopyScene: SKScene {
                         self.addChild(backgroundNode)
                     }
                     self.addChild(houseNode)
+                    (houseNode as? SKVideoNode)?.play()
                 }
             } catch {
                 Log.fault("Unable to load initial resources: \(error)")
@@ -117,11 +119,30 @@ final class SnoopyScene: SKScene {
         return backgroundNode
     }
 
-    private func setupSnoopyHouse(_ house: URL) async throws -> some SKNode {
+    private func setupSnoopyHouse(_ house: URL) async throws -> SKNode {
+        let houseNode = switch house.pathExtension {
+        case "heic": try await setupImageSnoopyHouse(house)
+        case "mov": try await setupVideoSnoopyHouse(house)
+        default: Log.fault("Unexpected snoopy house type: \(house)")
+        }
+        houseNode.position = CGPoint(x: size.width / 2, y: size.height / 2 - HOUSE_Y_OFFSET)
+        return houseNode
+    }
+
+    private func setupImageSnoopyHouse(_ house: URL) async throws -> some SKNode {
         let texture = try await SKTexture.asyncFrom(contentsOf: house)
         let houseNode = SKSpriteNode(texture: texture)
         houseNode.size = CGSize(width: size.width * HOUSE_SCALE, height: size.height * HOUSE_SCALE)
-        houseNode.position = CGPoint(x: size.width / 2, y: size.height / 2 - HOUSE_Y_OFFSET)
+        return houseNode
+    }
+
+    private func setupVideoSnoopyHouse(_ house: URL) async throws -> some SKNode {
+        let playItem = await AVPlayerItem.load(url: house)
+        let player = AVQueuePlayer()
+        snoopyHouseVideoLoop = AVPlayerLooper(player: player, templateItem: playItem)
+
+        let houseNode = SKVideoNode(avPlayer: player)
+        houseNode.size = CGSize(width: size.width * HOUSE_SCALE, height: size.height * HOUSE_SCALE)
         return houseNode
     }
 

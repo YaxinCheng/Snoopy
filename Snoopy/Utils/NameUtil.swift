@@ -79,7 +79,7 @@ enum NameUtil {
         resourceName.starts(with: "VI") || resourceName.starts(with: "WE")
     }
 
-    static func isSpecialTransition<S: StringProtocol>(_ resourceName: S) -> Bool {
+    static func isOutroOnlyTransition<S: StringProtocol>(_ resourceName: S) -> Bool {
         resourceName == "ST006"
     }
 
