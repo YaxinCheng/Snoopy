@@ -19,7 +19,7 @@ private let BACKGROUND_COLOURS: [NSColor] = [
 ]
 
 struct SnoopyModel {
-    private let animations: AnimationCollection = {
+    private static let animations: AnimationCollection = {
         let resourceFiles = Bundle.this
             .urls(forResourcesWithExtension: nil, subdirectory: "Animations") ?? []
         Log.debug("loaded \(resourceFiles.count) resource files")
@@ -31,7 +31,7 @@ struct SnoopyModel {
             Log.debug("finished animation: \(currentAnimation?.name ?? "nil"), next animation: \(newValue?.name ?? "nil")")
             if let newValue, newValue.isImageSequence {
                 decoration = if Int.random(in: 0 ... 9) >= 9 { // Only 10% of the time that we should have a decoration
-                    animations.decorations.randomElement()
+                    SnoopyModel.animations.decorations.randomElement()
                 } else {
                     nil
                 }
@@ -49,11 +49,11 @@ struct SnoopyModel {
     private(set) var specialConnection: Clip<ImageSequence>?
     
     init() {
-        snoopyHouse = animations.snoopyHouses.randomElement()!
+        snoopyHouse = SnoopyModel.animations.snoopyHouses.randomElement()!
     }
     
     var background: URL? {
-        animations.background
+        SnoopyModel.animations.background
     }
     
     enum NextAnimationKind {
@@ -93,7 +93,7 @@ struct SnoopyModel {
         currentAnimation = animation
         let needsMask = NameUtil.isDream(animation.name)
         if needsMask {
-            (currentTransition, currentMask) = isFirstAnimation ? animations.outroTransitionAndMask() : animations.randomTransitionAndMask()
+            (currentTransition, currentMask) = isFirstAnimation ? SnoopyModel.animations.outroTransitionAndMask() : SnoopyModel.animations.randomTransitionAndMask()
         } else {
             currentMask = nil
             currentTransition = nil
@@ -101,31 +101,31 @@ struct SnoopyModel {
     }
 
     private mutating func startSpecialConnection() {
-        specialConnection = animations.specialConnections.randomElement()!.unwrapToImageSequence()
-        currentTransition = animations.randomNonDreamyTransition()
-        currentMask = animations.randomMask()
+        specialConnection = SnoopyModel.animations.specialConnections.randomElement()!.unwrapToImageSequence()
+        currentTransition = SnoopyModel.animations.randomNonDreamyTransition()
+        currentMask = SnoopyModel.animations.randomMask()
     }
     
     private func randomAnimation() -> Animation {
-        let animation = animations.jumpGraph.keys.randomElement()!
+        let animation = SnoopyModel.animations.jumpGraph.keys.randomElement()!
         Log.info("start random animation: \(animation.name)")
         return animation
     }
 
     private func randomDream() -> Animation {
-        let animation = animations.dreams.randomElement()!
+        let animation = SnoopyModel.animations.dreams.randomElement()!
         Log.info("start random dream: \(animation.name)")
         return animation
     }
     
     private func wakeAnimation() -> Animation {
-        let animation = animations.wakeAnimations.randomElement()!
+        let animation = SnoopyModel.animations.wakeAnimations.randomElement()!
         Log.info("start wake animation: \(animation)")
         return animation
     }
     
     private func nextAnimationOnJumpGraph(source: Animation) -> Animation? {
-        let animation = animations.jumpGraph[source]?.randomElement()
+        let animation = SnoopyModel.animations.jumpGraph[source]?.randomElement()
         Log.info("next animation on jump graph: \"\(source.name)\" => \"\(animation?.name ?? "nil")\"")
         return animation
     }

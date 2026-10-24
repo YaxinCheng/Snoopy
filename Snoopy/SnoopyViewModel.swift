@@ -9,7 +9,7 @@ import SwiftUI
 
 @MainActor
 final class SnoopyViewModel: ObservableObject {
-    @Published private(set) var model = SnoopyModel()
+    private(set) var model = SnoopyModel()
 
     func setup(scene: SnoopyScene) async {
         if model.currentAnimation == nil {
