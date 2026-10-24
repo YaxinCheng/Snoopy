@@ -266,11 +266,9 @@ final class SnoopyScene: SKScene {
     private func setUpSceneFromImageSequenceClip(_ clip: Clip<ImageSequence>, decoration: Animation?) async {
         let shouldLoadDecoration = (decorationNode == nil) && (decoration != nil)
         let decorationURLs = shouldLoadDecoration ? decoration.map { Self.expandUrls(from: $0.unwrapToVideo()) } : nil
-        let decorationItems = await Batch.asyncLoad(urls: decorationURLs ?? [], transform: AVPlayerItem.load(url:))
-        let decorationDuration = await Self.totalDuration(of: decorationItems)
-
-        let expandedImageUrls = Self.expandUrls(from: clip, minDuration: decorationDuration)
-        let imageNode = await AnimatedImageNode.asyncCreate(contentsOf: expandedImageUrls).fullscreen(in: self)
+        async let decorationItemsLoad = Batch.asyncLoad(urls: decorationURLs ?? [], transform: AVPlayerItem.load(url:))
+        async let imageNodeLoad = AnimatedImageNode.asyncCreate(contentsOf: Self.expandUrls(from: clip)).fullscreen(in: self)
+        let (imageNode, decorationItems) = await (imageNodeLoad, decorationItemsLoad)
 
         addChild(imageNode)
         self.imageNode = imageNode
@@ -298,46 +296,6 @@ final class SnoopyScene: SKScene {
             await self?.imageNode?.play(timePerFrame: IMAGES_SEQ_INTERVAL)
             self?._didFinishPlaying.send()
         }
-    }
-
-    private static func totalDuration(of items: [AVPlayerItem]) async -> TimeInterval {
-        var total: TimeInterval = 0
-        for item in items {
-            if let duration = try? await item.asset.load(.duration), duration.isNumeric {
-                total += duration.seconds
-            }
-        }
-        return total
-    }
-
-    private static func expandUrls(from imageSequenceClip: Clip<ImageSequence>, minDuration: TimeInterval = 0) -> [URL] {
-        let introUrls = OptionalToArray(imageSequenceClip.intro?.urls)
-        let loopUrls = OptionalToArray(imageSequenceClip.loop?.urls)
-        let outroUrls = OptionalToArray(imageSequenceClip.outro?.urls)
-
-        var loopRepeatingLimit = UInt.random(in: 1...LOOP_REPEAT_LIMIT)
-
-        if minDuration > 0 {
-            let fixedDuration = Double(introUrls.count + outroUrls.count) * IMAGES_SEQ_INTERVAL
-            let remainingDuration = minDuration - fixedDuration
-            if remainingDuration > 0 {
-                if !loopUrls.isEmpty {
-                    let singleLoopDuration = Double(loopUrls.count) * IMAGES_SEQ_INTERVAL
-                    let neededLoops = UInt(ceil(remainingDuration / singleLoopDuration))
-                    loopRepeatingLimit = max(loopRepeatingLimit, neededLoops)
-                } else if !introUrls.isEmpty, outroUrls.isEmpty {
-                    // Whole animation stored in `intro` with no separate `loop` or `outro`
-                    let singleIntroDuration = Double(introUrls.count) * IMAGES_SEQ_INTERVAL
-                    let neededRepeats = UInt(ceil(minDuration / singleIntroDuration))
-                    return Array(introUrls.repeat(count: max(1, neededRepeats)))
-                }
-            }
-        }
-
-        var result = introUrls
-        result.append(contentsOf: loopUrls.repeat(count: loopRepeatingLimit))
-        result.append(contentsOf: outroUrls)
-        return result
     }
 
     private static func expandUrls(from videoClip: Clip<URL>) -> [URL] {

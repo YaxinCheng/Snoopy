@@ -29,7 +29,7 @@ struct SnoopyModel {
     var currentAnimation: Animation? {
         willSet {
             Log.debug("finished animation: \(currentAnimation?.name ?? "nil"), next animation: \(newValue?.name ?? "nil")")
-            if let newValue, newValue.isImageSequence, !newValue.designated {
+            if let newValue, newValue.isImageSequence {
                 decoration = if Int.random(in: 0 ... 9) >= 9 { // Only 10% of the time that we should have a decoration
                     animations.decorations.randomElement()
                 } else {
