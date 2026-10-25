@@ -19,6 +19,12 @@ After unlocking from the black screen, it may show an alert like
 
 Here is what you can do to solve it:
 
+#### Option 1. Run `xattr` in terminal
+Open Terminal, then run 
+`xattr -dr com.apple.quarantine ~/Downloads/Snoopy.saver ~/Library/Screen\ Savers/Snoopy.saver 2>/dev/null; pkill legacyScreenSaver`
+to allow the screensaver to be run.
+
+#### Option 2. Manual
 * Open System Settings
 * Go to `Privacy & Security`
 * Scroll down to the bottom and click allow Snoopy.saver to open anyway
