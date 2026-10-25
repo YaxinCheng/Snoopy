@@ -91,8 +91,10 @@ struct SnoopyModel {
         Log.info("start animation: \(animation.name)")
         let isFirstAnimation = currentAnimation == nil
         currentAnimation = animation
-        let needsMask = NameUtil.isDream(animation.name)
-        if needsMask {
+        if NameUtil.isDream(animation.name) {
+            if !isFirstAnimation {
+                backgroundColor = BACKGROUND_COLOURS.randomElement()!
+            }
             (currentTransition, currentMask) = isFirstAnimation ? SnoopyModel.animations.outroTransitionAndMask() : SnoopyModel.animations.randomTransitionAndMask()
         } else {
             currentMask = nil

@@ -56,6 +56,7 @@ final class SnoopyScene: SKScene {
     /// setupBackgroundAndSnoopyHouse is a once token that executes a given function only once per program run.
     private lazy var setupBackgroundAndSnoopyHouse = AsyncOnce()
     private var snoopyHouseVideoLoop: AVPlayerLooper?
+    private var backgroundColorNode: SKSpriteNode!
 
     private let _didFinishPlaying = PassthroughSubject<Void, Never>()
 
@@ -72,7 +73,7 @@ final class SnoopyScene: SKScene {
         switch animation {
         case .video(let clip):
             if NameUtil.isDream(clip.name) {
-                await setupSceneFromDreamVideoClip(clip, mask: mask!, transition: transition!, specialConnection: specialConnection)
+                await setupSceneFromDreamVideoClip(clip, mask: mask!, transition: transition!, specialConnection: specialConnection, backgroundColor: backgroundColor)
             } else {
                 await setupSceneFromPureVideoClip(clip)
             }
@@ -94,6 +95,7 @@ final class SnoopyScene: SKScene {
                     setupSnoopyHouse
                 )
                 await MainActor.run {
+                    self.backgroundColorNode = colorNode
                     self.addChild(colorNode)
                     if let backgroundNode = backgroundNode {
                         self.addChild(backgroundNode)
@@ -107,7 +109,7 @@ final class SnoopyScene: SKScene {
         }
     }
 
-    private func setupColorBackgroundNode(color: NSColor) -> some SKNode {
+    private func setupColorBackgroundNode(color: NSColor) -> SKSpriteNode {
         return SKSpriteNode(color: color, size: size).fullscreen(in: self)
     }
 
@@ -165,7 +167,7 @@ final class SnoopyScene: SKScene {
     }
 
     /// setupSceneFromDreamVideoClip sets up the scene for dreaming video clips.
-    private func setupSceneFromDreamVideoClip(_ clip: Clip<URL>, mask: Mask, transition: Clip<URL>, specialConnection: Clip<ImageSequence>?) async {
+    private func setupSceneFromDreamVideoClip(_ clip: Clip<URL>, mask: Mask, transition: Clip<URL>, specialConnection: Clip<ImageSequence>?, backgroundColor: NSColor) async {
         async let transitionPlayerLoad = setupTransitionPlayerAndItems(transition: transition)
         async let dreamPlayerLoad = setupDreamPlayerAndItems(clip: clip)
         async let specialConnectionNodeLoad: AnimatedImageNode? = if let specialConnection {
@@ -237,6 +239,7 @@ final class SnoopyScene: SKScene {
                             await self?.playMask(cropNode: dreamVideoNode, maskCache: introMaskCache)
                         }
                     }
+                    self?.backgroundColorNode.color = backgroundColor
                 }
             } else if item === playItems.last {
                 Task {
