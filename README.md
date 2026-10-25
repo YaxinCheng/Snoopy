@@ -21,7 +21,11 @@ Here is what you can do to solve it:
 
 #### Option 1. Run `xattr` in terminal
 Open Terminal, then run 
-`xattr -dr com.apple.quarantine ~/Downloads/Snoopy.saver ~/Library/Screen\ Savers/Snoopy.saver 2>/dev/null; pkill legacyScreenSaver`
+
+```shell
+xattr -dr com.apple.quarantine ~/Downloads/Snoopy.saver ~/Library/Screen\ Savers/Snoopy.saver 2>/dev/null; pkill legacyScreenSaver
+```
+
 to allow the screensaver to be run.
 
 #### Option 2. Manual
