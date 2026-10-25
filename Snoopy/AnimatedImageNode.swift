@@ -11,7 +11,7 @@ import SpriteKit
 final class AnimatedImageNode: SKSpriteNode {
     private var textures: [SKTexture] = []
     private let urls: [URL]
-    private static let BATCH_SIZE = 5
+    nonisolated private static let BATCH_SIZE = 5
 
     private init() {
         Log.fault("Not implemented")
@@ -35,7 +35,7 @@ final class AnimatedImageNode: SKSpriteNode {
         #endif
         Log.debug("AnimatedImageNode created with resources: [\(resources.lazy.map(\.lastPathComponent).joined(separator: ", "))]")
         return await Task.detached {
-            let textures = await Batch.syncLoad(urls: resources[..<Self.BATCH_SIZE], transform: SKTexture.mustCreateFrom(contentsOf:))
+            let textures = Batch.syncLoad(urls: resources[..<Self.BATCH_SIZE], transform: SKTexture.mustCreateFrom(contentsOf:))
             return await MainActor.run {
                 AnimatedImageNode(urls: resources, firstBatchOfTextures: textures)
             }

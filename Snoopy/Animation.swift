@@ -9,6 +9,7 @@ import Foundation
 
 private let HEIC_FILE_TYPE: String = "heic"
 private let MOV_FILE_TYPE: String = "mov"
+private let PNG_FILE_TYPE: String = "png"
 private let DESIGNATION_KEYWORD: String = "_To_"
 
 enum Animation: Equatable, Hashable {
@@ -34,7 +35,7 @@ enum Animation: Equatable, Hashable {
     
     /// designated animations are the ones that jumps to a specific animation.
     /// One way to identify them is through the file names, where `_To_` keyword must present.
-    fileprivate var designated: Bool {
+    var designated: Bool {
         switch self {
         case .video(let clip):
             clip.outro?.lastPathComponent.contains(DESIGNATION_KEYWORD) ?? false
@@ -84,7 +85,7 @@ enum Animation: Equatable, Hashable {
 }
 
 #if DEBUG
-// For debugging purposes only.
+/// For debugging purposes only.
 extension Animation: CustomDebugStringConvertible {
     var debugDescription: String {
         switch self {
@@ -122,81 +123,86 @@ struct AnimationCollection {
     let jumpGraph: JumpGraph // key: Animation, value: animations can be jumpped from the current animation
     let masks: [String: Mask]
     let dreams: [Animation]
+    /// animations when snoopy transits into a dream and out of a dream
     let dreamTransitions: [Clip<URL>]
-    let specialTransitions: [Clip<URL>]
+    /// animations when snoopy transits out of a dream, this one only has outro
+    let outronOnlyTransitions: [Clip<URL>]
+    // animations that connects between a transition to a dream, these are full screen image animations
+    let specialConnections: [Animation]
     let decorations: [Animation]
-    /// rph for lack of better terms is a kind of animation that bridges transition to and from sleepy snoopy.
-    /// It will also be part of the jump graph.
-    let rph: Set<Animation>
-    let specialImages: [URL] // images that will be used as decorations
+    let wakeAnimations: [Animation]
+    let snoopyHouses: [URL] // images that will be used as decorations
     let background: URL?
 
-    private init(graph: JumpGraph, dreams: [Animation], dreamTransitions: [Clip<URL>], specialTransitions: [Clip<URL>], decorations: [Animation], rph: Set<Animation>, masks: [String: Mask], specialImages: [URL], background: URL?) {
+    private init(graph: JumpGraph, dreams: [Animation], dreamTransitions: [Clip<URL>], outroOnlyTransitions: [Clip<URL>], specialConnections: [Animation], decorations: [Animation], wakeAnimations: [Animation], masks: [String: Mask], snoopyHouses: [URL], background: URL?) {
         self.jumpGraph = graph
         self.dreams = dreams
         self.dreamTransitions = dreamTransitions
-        self.specialTransitions = specialTransitions
+        self.outronOnlyTransitions = outroOnlyTransitions
+        self.specialConnections = specialConnections
         self.decorations = decorations
-        self.rph = rph
+        self.wakeAnimations = wakeAnimations
         self.masks = masks
-        self.specialImages = specialImages
+        self.snoopyHouses = snoopyHouses
         self.background = background
     }
     
     static func from(files: [URL]) -> AnimationCollection {
         let files = files.sorted(using: FileSortComparator())
-        var specialImages: [URL] = []
-        var specialTransitions: [Clip<URL>] = []
+        var snoopyHouses: [URL] = []
+        var outroOnlyTransitions: [Clip<URL>] = []
+        var specialConnections: [Animation] = []
         var background: URL?
         var allContexts = [AnimationContext]()
         var masks: [String: Mask] = [:]
         var dreams: [Animation] = []
         var dreamTransitions: [Clip<URL>] = []
         var decorations: [Animation] = []
-        var rph: Set<Animation> = []
+        var wakeAnimations: [Animation] = []
         var index = 0
         while index < files.count {
             defer { index += 1 }
             let fileURL = files[index]
             let fileExtension = fileURL.pathExtension
             let fileName = fileURL.deletingPathExtension().lastPathComponent
-            let resourceName = ParsedFileName.extractResourceName(from: fileName)
+            let resourceName = NameUtil.extractResourceName(from: fileName)
             switch fileExtension {
-            case HEIC_FILE_TYPE where ParsedFileName.isSnoopyHouse(resourceName):
-                specialImages.append(fileURL)
-            case HEIC_FILE_TYPE where ParsedFileName.isBackground(resourceName):
+            case PNG_FILE_TYPE:
+                continue
+            case HEIC_FILE_TYPE where NameUtil.isBackground(resourceName):
                 background = fileURL
-            case MOV_FILE_TYPE where ParsedFileName.isSpecialTransition(resourceName):
-                specialTransitions.append(Clip.from(parsedName: ParsedFileName.from(fileName: fileName), sourceFile: fileURL))
+            case MOV_FILE_TYPE where NameUtil.isOutroOnlyTransition(resourceName):
+                outroOnlyTransitions.append(Clip.from(parsedName: ParsedFileName.from(fileName: fileName), sourceFile: fileURL))
             case HEIC_FILE_TYPE, MOV_FILE_TYPE:
+                if NameUtil.isSnoopyHouse(resourceName) {
+                    snoopyHouses.append(fileURL)
+                    continue
+                }
                 let endOfAnimationIndex = files[index...].findFirstUnmatch {
                     $0.lastPathComponent.range(of: "^\\d{3}_\(resourceName).*\\.(heic|mov)$", options: .regularExpression) != nil
                 }
-                let animationContexts: [AnimationContext] = switch fileExtension {
-                case HEIC_FILE_TYPE:
-                    constructImageSequenceAnimation(from: files[index ..< endOfAnimationIndex])
-                case MOV_FILE_TYPE:
-                    constructVideoAnimation(from: files[index ..< endOfAnimationIndex])
-                default:
-                    unreachable("unexpected file extension \"\(fileExtension)\", file is: \(fileURL.path())")
-                }
-                if ParsedFileName.isMask(resourceName) {
-                    for animation in animationContexts.lazy.map(\.animation) {
-                        masks.setDefault(Mask(), forKey: animation.name) {
-                            $0.add(animation: animation)
+                let animationContexts = constructAnimations(from: files[index ..< endOfAnimationIndex])
+                for animationContext in animationContexts {
+                    if NameUtil.isMask(resourceName) {
+                        for animation in animationContext.lazy.map(\.animation) {
+                            masks.setDefault(Mask(), forKey: animation.name) {
+                                $0.add(animation: animation)
+                            }
                         }
+                    } else if NameUtil.isDream(resourceName) {
+                        dreams.append(contentsOf: animationContext.map(\.animation))
+                    } else if NameUtil.isDreamTransition(resourceName) {
+                        dreamTransitions.append(contentsOf: animationContext.map(\.animation).map { $0.unwrapToVideo() })
+                    } else if NameUtil.isDecoration(resourceName) {
+                        decorations.append(contentsOf: animationContext.map(\.animation))
+                    } else if NameUtil.isSpecialConnection(resourceName) {
+                        specialConnections.append(contentsOf: animationContext.lazy.map(\.animation))
+                    } else {
+                        if NameUtil.isRph(resourceName) {
+                            wakeAnimations.append(contentsOf: animationContext.map(\.animation).filter { $0.designated })
+                        }
+                        allContexts.append(contentsOf: animationContext)
                     }
-                } else if ParsedFileName.isDream(resourceName) {
-                    dreams.append(contentsOf: animationContexts.map(\.animation))
-                } else if ParsedFileName.isDreamTransition(resourceName) {
-                    dreamTransitions.append(contentsOf: animationContexts.map(\.animation).map { $0.unwrapToVideo() })
-                } else if ParsedFileName.isDecoration(resourceName) {
-                    decorations.append(contentsOf: animationContexts.map(\.animation))
-                } else {
-                    if ParsedFileName.isRph(resourceName) {
-                        rph.formUnion(animationContexts.lazy.map(\.animation))
-                    }
-                    allContexts.append(contentsOf: animationContexts)
                 }
                 index = endOfAnimationIndex - 1
             default:
@@ -206,15 +212,26 @@ struct AnimationCollection {
         return AnimationCollection(graph: createJumpGraph(context: allContexts),
                                    dreams: dreams,
                                    dreamTransitions: dreamTransitions,
-                                   specialTransitions: specialTransitions,
+                                   outroOnlyTransitions: outroOnlyTransitions,
+                                   specialConnections: specialConnections,
                                    decorations: decorations,
-                                   rph: rph,
+                                   wakeAnimations: wakeAnimations,
                                    masks: masks,
-                                   specialImages: specialImages,
+                                   snoopyHouses: snoopyHouses,
                                    background: background)
     }
     
     typealias AnimationContext = (animation: Animation, source: Substring?, destination: Substring?)
+    
+    private static func constructAnimations(from files: ArraySlice<URL>) -> [[AnimationContext]] {
+        var animationGroups: [[AnimationContext]] = []
+        animationGroups.reserveCapacity(2)
+        let imageFiles = files.lazy.filter { $0.pathExtension == HEIC_FILE_TYPE }
+        animationGroups.append(constructImageSequenceAnimation(from: ArraySlice(imageFiles)))
+        let videoFiles = files.lazy.filter { $0.pathExtension == MOV_FILE_TYPE }
+        animationGroups.append(constructVideoAnimation(from: ArraySlice(videoFiles)))
+        return animationGroups
+    }
     
     /// constructVideoAnimation takes a bunch of files and combine the related files into the same animation with the related context.
     /// There are 3 kinds of possible combinations:
@@ -225,7 +242,7 @@ struct AnimationCollection {
     private static func constructVideoAnimation(from files: ArraySlice<URL>) -> [AnimationContext] {
         typealias ClipContext = (clip: Clip<URL>, source: Substring?, destination: Substring?)
         var introClips: [ClipContext] = []
-        var loopClips: [Clip<URL>] = []
+        var loopClips: [ClipContext] = []
         var outroClips: [ClipContext] = []
         for file in files {
             let parsedName = ParsedFileName.from(fileName: file.deletingPathExtension().lastPathComponent)
@@ -233,19 +250,25 @@ struct AnimationCollection {
             if clip.intro != nil {
                 introClips.append((clip, parsedName.from, parsedName.to))
             } else if clip.loop != nil {
-                loopClips.append(clip)
+                loopClips.append((clip, parsedName.from, parsedName.to))
             } else if clip.outro != nil {
                 outroClips.append((clip, parsedName.from, parsedName.to))
             }
         }
-        for loopClip in loopClips {
-            for index in introClips.indices {
-                if case .failure(let error) = introClips[index].clip.tryMerge(loopClip) {
-                    Log.fault("merging introClip and loopClip failed! Error: \(error), IntroClip: \(introClips[index].clip.name), loopClip: \(loopClip.name)")
+        if introClips.isEmpty {
+            introClips = loopClips
+        } else {
+            for (loopClip, _, _) in loopClips {
+                for index in introClips.indices {
+                    if case .failure(let error) = introClips[index].clip.tryMerge(loopClip) {
+                        Log.fault("merging introClip and loopClip failed! Error: \(error), IntroClip: \(introClips[index].clip.name), loopClip: \(loopClip.name)")
+                    }
                 }
             }
         }
-        if !outroClips.isEmpty {
+        if introClips.isEmpty {
+            introClips = outroClips
+        } else if !outroClips.isEmpty {
             var mergedClips: [ClipContext] = []
             mergedClips.reserveCapacity(outroClips.count * introClips.count)
             for outroClip in outroClips {
@@ -269,7 +292,7 @@ struct AnimationCollection {
         var index = files.startIndex
         while index < files.endIndex {
             let fileName = files[index].deletingPathExtension().lastPathComponent
-            let sequenceNamePrefix = ParsedFileName.extractImageSequenceNamePrefix(fileName: fileName)
+            let sequenceNamePrefix = NameUtil.extractImageSequenceNamePrefix(fileName: fileName)
             let endIndexOfClip = files[index...].findFirstUnmatch {
                 $0.lastPathComponent.range(of: "\(sequenceNamePrefix)\\d{6}.heic", options: .regularExpression) != nil
             }
@@ -315,40 +338,61 @@ struct AnimationCollection {
     }
     
     private static func createJumpGraph(context: [AnimationContext]) -> JumpGraph {
-        var nameToAnimations = [String: [Animation]]()
+        var nameToAnimations = [String: [String: [Animation]]]()
         for c in context {
-            nameToAnimations.setDefault([], forKey: c.animation.name) { animations in
-                animations.append(c.animation)
+            // AP001 => ("AP", "001")
+            // RDP   => ("RDP", "")
+            let (name, suffix) = NameUtil.splitAnimationName(c.animation.name)
+            nameToAnimations.setDefault([:], forKey: String(name)) { animations in
+                animations.setDefault([], forKey: String(suffix)) {
+                    $0.append(c.animation)
+                }
             }
         }
         var jumpGraph: JumpGraph = [:]
+        jumpGraph.reserveCapacity(context.count)
         for c in context {
             jumpGraph[c.animation] = []
         }
         for c in context {
-            if let source = c.source.map(String.init) {
-                nameToAnimations[source]?
+            let effectiveSource = c.source ?? (c.destination != nil ? Substring(c.animation.name) : nil)
+            if let (source, suffix) = effectiveSource.map(NameUtil.splitAnimationName),
+               let sourceAnimations = nameToAnimations[String(source)]
+            {
+                let animations = switch suffix.isEmpty {
+                case true: sourceAnimations.values.flatMap { $0 }
+                case false: sourceAnimations[String(suffix)] ?? []
+                }
+                animations
                     .filter { !$0.designated }
                     .forEach { jumpGraph[$0]?.append(c.animation) }
             }
-            if let destination = c.destination.map(String.init),
-               let destinationAnimation = nameToAnimations[destination]
+            if let (destination, suffix) = c.destination.map(NameUtil.splitAnimationName),
+               let destinationAnimations = nameToAnimations[String(destination)]
             {
-                jumpGraph[c.animation]?.append(contentsOf: destinationAnimation)
+                let animations = switch suffix.isEmpty {
+                case true: destinationAnimations.values.flatMap { $0 }
+                case false: destinationAnimations[String(suffix)] ?? []
+                }
+                let idleAnimations = animations.filter { !$0.designated }
+                let targetAnimations = idleAnimations.isEmpty ? animations : idleAnimations
+                jumpGraph[c.animation]?.append(contentsOf: targetAnimations)
             }
         }
         return jumpGraph
     }
     
-    func firstTransitionAndMask() -> (transition: Clip<URL>, mask: Mask) {
-        let transition = specialTransitions.randomElement()!
+    /// outroTransitionAndMask returns a outro transition + mask with intro and outro
+    func outroTransitionAndMask() -> (transition: Clip<URL>, mask: Mask) {
+        let transition = outronOnlyTransitions.randomElement()!
         let mask = masks.values.randomElement()!
         return (transition, mask)
     }
     
+    /// randomTransitionAndMask returns intro and outro transition + intro and outro mask
     func randomTransitionAndMask() -> (transition: Clip<URL>, mask: Mask) {
         let transition = dreamTransitions.randomElement()!
-        let mask = if Self.nonDreamyTransitions.contains(transition.name) {
+        let mask = if NameUtil.isNonDreamyTransition(transition.name) {
             masks["TM007"] // line swiping transition
         } else {
             masks.values.randomElement()
@@ -356,10 +400,14 @@ struct AnimationCollection {
         return (transition, mask!)
     }
     
-    /// nonDreamyTransitions are the ones that are not shown as dreamy,
-    /// aka, cannot use the dream bubble mask.
-    /// For them, we specifically use TM007 mask (line swiping).
-    private static let nonDreamyTransitions: Set<String> = ["ST001", "ST005"]
+    func randomNonDreamyTransition() -> Clip<URL> {
+        // TODO: this could be a separate variable for performance, but given the array being small, so no need to do it now.
+        dreamTransitions.lazy.filter { NameUtil.isNonDreamyTransition($0.name) }.randomElement()!
+    }
+    
+    func randomMask() -> Mask {
+        masks.values.randomElement()!
+    }
 }
 
 struct FileSortComparator: SortComparator {
@@ -468,7 +516,10 @@ struct Clip<MediaType: Sendable> {
     
     mutating func tryMerge(_ other: Self) -> Result<Void, Error> {
         #if DEBUG
-        guard name == other.name else {
+        guard name == other.name ||
+            (name.starts(with: "R") &&
+                (other.name.starts(with: name) || name.starts(with: other.name)))
+        else {
             return .failure(Error.nameNotMatch(expect: name, actual: other.name))
         }
         #endif
