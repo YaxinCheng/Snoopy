@@ -10,10 +10,11 @@ import Foundation
 enum Batch {
     static func syncLoad<R>(urls: ArraySlice<URL>, transform: @escaping @Sendable (URL) -> R) -> [R] {
         Array(unsafeUninitializedCapacity: urls.count) { buffer, initializedCount in
-            let baseAddress = buffer.baseAddress!
+            guard let baseAddress = buffer.baseAddress else { return }
+            nonisolated(unsafe) let unsafeBaseAddress = baseAddress
             let startIndex = urls.startIndex
             DispatchQueue.concurrentPerform(iterations: urls.count) { index in
-                (baseAddress + index).initialize(to: transform(urls[startIndex + index]))
+                (unsafeBaseAddress + index).initialize(to: transform(urls[startIndex + index]))
             }
             initializedCount = urls.count
         }
