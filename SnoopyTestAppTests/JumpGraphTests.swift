@@ -152,9 +152,10 @@ struct JumpGraphTests {
         #expect(collection.wakeAnimations.allSatisfy { !$0.name.starts(with: "RPD") })
 
         // Pre-dream idle poses must strictly be solitary RPH
-        #expect(!collection.rph.isEmpty)
-        #expect(collection.rph.allSatisfy { $0.name == "RPH002" && !$0.designated })
-        #expect(collection.rph.allSatisfy { !$0.name.starts(with: "RW") })
+        let rphPoses = collection.jumpGraph.keys.filter { NameUtil.isRoofPose($0.name) && !$0.designated }
+        #expect(!rphPoses.isEmpty)
+        #expect(rphPoses.allSatisfy { $0.name == "RPH002" && !$0.designated })
+        #expect(rphPoses.allSatisfy { !$0.name.starts(with: "RW") })
     }
 
     /// Tests the complete post-dream transition lifecycle:
@@ -170,7 +171,7 @@ struct JumpGraphTests {
         let collection = AnimationCollection.from(files: files)
 
         // 1. Resting roof pose for pre-dream
-        let restingRph = collection.rph
+        let restingRph = collection.jumpGraph.keys.filter { NameUtil.isRoofPose($0.name) && !$0.designated }
         #expect(restingRph.count == 1)
         #expect(restingRph.first?.name == "RPH002")
         #expect(restingRph.first?.designated == false)
@@ -190,8 +191,8 @@ struct JumpGraphTests {
         }
     }
 
-    /// Tests the full asset jump graph: verifies that all 91 nodes are mutually connected and reachable,
-    /// that SS001 is the only isolated node (0 incoming, 0 outgoing), and that all transitions obey domain rules.
+    /// Tests the full asset jump graph: verifies that all 148 nodes are mutually connected and reachable,
+    /// that SS001..SS003 are extracted into `specialConnections`, and that all transitions obey domain rules.
     @Test func testFullGraphConnectivityAndReasonableness() {
         let localDir = URL(fileURLWithPath: "Resources")
         guard let files = try? FileManager.default.contentsOfDirectory(at: localDir, includingPropertiesForKeys: nil)
@@ -201,23 +202,22 @@ struct JumpGraphTests {
         let collection = AnimationCollection.from(files: files)
         let graph = collection.jumpGraph
 
-        // Total graph nodes (all 92 animations)
-        #expect(graph.count == 92)
+        // Total graph nodes (148 connected animations) and 3 special connections (SS001..SS003)
+        #expect(graph.count == 148)
+        #expect(collection.specialConnections.count == 3)
 
-        // 1. Dead ends: exactly 1 node (SS001) has 0 outgoing transitions
+        // 1. Dead ends: 0 nodes have 0 outgoing transitions
         let deadEnds = graph.filter { $0.value.isEmpty }.map(\.key)
-        #expect(deadEnds.count == 1)
-        #expect(deadEnds.first?.name == "SS001")
+        #expect(deadEnds.isEmpty)
 
-        // 2. Orphan nodes: exactly 1 node (SS001) has 0 incoming transitions
+        // 2. Orphan nodes: 0 nodes have 0 incoming transitions
         var inDegrees: [Animation: Int] = [:]
         for node in graph.keys { inDegrees[node] = 0 }
         for (_, targets) in graph {
             for target in targets { inDegrees[target, default: 0] += 1 }
         }
         let orphans = inDegrees.filter { $0.value == 0 }.map(\.key)
-        #expect(orphans.count == 1)
-        #expect(orphans.first?.name == "SS001")
+        #expect(orphans.isEmpty)
 
         // 3. Reachability from base sleeping poses (BP001..BP004)
         let basePoses = graph.keys.filter { $0.name.starts(with: "BP") && !$0.designated }
@@ -235,8 +235,7 @@ struct JumpGraphTests {
             }
         }
         let unreachableFromBP = Set(graph.keys).subtracting(visited)
-        #expect(unreachableFromBP.count == 1)
-        #expect(unreachableFromBP.first?.name == "SS001")
+        #expect(unreachableFromBP.isEmpty)
 
         // 4. Returnability: can all nodes return to base sleeping poses (BP001..BP004)?
         var reverseGraph: [Animation: [Animation]] = [:]
@@ -255,16 +254,16 @@ struct JumpGraphTests {
             }
         }
         let cannotReachBP = Set(graph.keys).subtracting(canReachBP)
-        #expect(cannotReachBP.count == 1)
-        #expect(cannotReachBP.first?.name == "SS001")
+        #expect(cannotReachBP.isEmpty)
 
         // 5. Transition reasonableness rules across the entire graph
-        for (node, targets) in graph where node.name != "SS001" {
-            // Every non-SS001 node has outgoing transitions
+        for (node, targets) in graph {
+            // Every node has outgoing transitions
             #expect(!targets.isEmpty)
 
-            // No node transitions into SS001
-            #expect(!targets.contains { $0.name == "SS001" })
+            // Special connections (SS*) are not part of the jump graph
+            #expect(!NameUtil.isSpecialConnection(node.name))
+            #expect(!targets.contains { NameUtil.isSpecialConnection($0.name) })
 
             // Solitary poses (BP*, RP*) never transition directly to Woodstock (RW*)
             if node.name.starts(with: "BP") || node.name.starts(with: "RP") {

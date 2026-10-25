@@ -100,9 +100,10 @@ struct SnoopyTestAppTests {
         BASE_URL.appending(path: "101_BP001_To_BP002_000003.heic"),
         BASE_URL.appending(path: "101_BP001_To_BP002_000004.heic"),
     ]
-    private let specialImages = [
+    private let snoopyHouses = [
         BASE_URL.appending(path: "101_IS12345.heic"),
         BASE_URL.appending(path: "101_IS4321.heic"),
+        BASE_URL.appending(path: "104_IS004.mov"),
     ]
 
     private let videoWithIntroFrom = BASE_URL.appending(path: "104_AP031_Intro_From_BP004.mov")
@@ -123,7 +124,7 @@ struct SnoopyTestAppTests {
         let animationCollection = AnimationCollection.from(files:
             (imageSequencesOutlineReveal + imageSequencesOutlineHide + imageSequencesMaskHide + imageSequencesMaskReveal).shuffled())
         #expect(animationCollection.jumpGraph.isEmpty)
-        #expect(animationCollection.specialImages.isEmpty)
+        #expect(animationCollection.snoopyHouses.isEmpty)
         #expect(animationCollection.masks.count == 1)
         #expect(animationCollection.masks.first?.value.mask == Clip(
             name: "TM001",
@@ -174,7 +175,7 @@ struct SnoopyTestAppTests {
         let animationCollection = AnimationCollection.from(
             files: [videoWithIntroFrom, videoWithLoop, videoWithOutroTo].shuffled()
         )
-        #expect(animationCollection.specialImages.isEmpty)
+        #expect(animationCollection.snoopyHouses.isEmpty)
         #expect(animationCollection.jumpGraph.count == 1)
         #expect(animationCollection.jumpGraph.keys.first == .video(Clip(
             name: "AP031",
@@ -189,7 +190,7 @@ struct SnoopyTestAppTests {
         let animationCollection = AnimationCollection.from(files: [
             videoWithOutro,
         ].shuffled())
-        #expect(animationCollection.specialImages.isEmpty)
+        #expect(animationCollection.snoopyHouses.isEmpty)
         #expect(animationCollection.jumpGraph.count == 1)
         #expect(animationCollection.jumpGraph.keys.first == .video(Clip(
             name: "CA004",
@@ -202,7 +203,7 @@ struct SnoopyTestAppTests {
         let animationCollection = AnimationCollection.from(files: [
             videoWithIntro, videoWithOutro,
         ].shuffled())
-        #expect(animationCollection.specialImages.isEmpty)
+        #expect(animationCollection.snoopyHouses.isEmpty)
         #expect(animationCollection.jumpGraph.count == 1)
         #expect(animationCollection.jumpGraph.keys.first == .video(Clip(
             name: "CA004",
@@ -216,7 +217,7 @@ struct SnoopyTestAppTests {
         let animationCollection = AnimationCollection.from(files: [
             videoWithFromAndTo,
         ])
-        #expect(animationCollection.specialImages.isEmpty)
+        #expect(animationCollection.snoopyHouses.isEmpty)
         #expect(animationCollection.jumpGraph.count == 1)
         #expect(animationCollection.jumpGraph.keys.first == .video(Clip(
             name: "CM021",
@@ -229,7 +230,7 @@ struct SnoopyTestAppTests {
         let animationCollection = AnimationCollection.from(files: [
             videoFullFledge,
         ])
-        #expect(animationCollection.specialImages.isEmpty)
+        #expect(animationCollection.snoopyHouses.isEmpty)
         #expect(animationCollection.jumpGraph.count == 1)
         #expect(animationCollection.jumpGraph.keys.first == .video(Clip(
             name: "CM005",
@@ -243,7 +244,7 @@ struct SnoopyTestAppTests {
             files: (imageSequencesWithFrom + imageSequencesWithTo)
                 .shuffled()
         )
-        #expect(animationCollection.specialImages.isEmpty)
+        #expect(animationCollection.snoopyHouses.isEmpty)
         #expect(animationCollection.jumpGraph.count == 1)
         #expect(animationCollection.jumpGraph.keys.first == .imageSequence(Clip(
             name: "BP004",
@@ -266,28 +267,30 @@ struct SnoopyTestAppTests {
             files: (imageSequencesWithIntro + imageSequencesWithLoop + imageSequencesWithOutro)
                 .shuffled()
         )
-        #expect(animationCollection.specialImages.isEmpty)
-        #expect(animationCollection.jumpGraph.count == 1)
-        #expect(animationCollection.jumpGraph.keys.first == .imageSequence(
-            Clip(
-                name: "SS001",
-                intro: ImageSequence(
-                    prefix: "102_SS001_Intro_",
-                    lastFile: 2,
-                    baseURL: BASE_URL
-                ),
-                loop: ImageSequence(
-                    prefix: "102_SS001_Loop_",
-                    lastFile: 4,
-                    baseURL: BASE_URL
-                ),
-                outro: ImageSequence(
-                    prefix: "102_SS001_Outro_",
-                    lastFile: 3,
-                    baseURL: BASE_URL
+        #expect(animationCollection.snoopyHouses.isEmpty)
+        #expect(animationCollection.jumpGraph.isEmpty)
+        #expect(animationCollection.specialConnections == [
+            .imageSequence(
+                Clip(
+                    name: "SS001",
+                    intro: ImageSequence(
+                        prefix: "102_SS001_Intro_",
+                        lastFile: 2,
+                        baseURL: BASE_URL
+                    ),
+                    loop: ImageSequence(
+                        prefix: "102_SS001_Loop_",
+                        lastFile: 4,
+                        baseURL: BASE_URL
+                    ),
+                    outro: ImageSequence(
+                        prefix: "102_SS001_Outro_",
+                        lastFile: 3,
+                        baseURL: BASE_URL
+                    )
                 )
-            )
-        ))
+            ),
+        ])
     }
 
     @Test func TestImageGroupFromAndTo() {
@@ -295,7 +298,7 @@ struct SnoopyTestAppTests {
         let animationCollection = AnimationCollection.from(
             files: imageSequencesWithFromAndTo
         )
-        #expect(animationCollection.specialImages.isEmpty)
+        #expect(animationCollection.snoopyHouses.isEmpty)
         #expect(animationCollection.jumpGraph.count == 1)
         #expect(animationCollection.jumpGraph.keys.first == .imageSequence(
             Clip(
@@ -310,18 +313,18 @@ struct SnoopyTestAppTests {
     }
 
     @Test func TestGroupFoundSpecialImages() {
-        let animationCollection = AnimationCollection.from(files: specialImages.shuffled())
-        #expect(animationCollection.specialImages.count == 2)
-        #expect(animationCollection.specialImages.sorted {
+        let animationCollection = AnimationCollection.from(files: snoopyHouses.shuffled())
+        #expect(animationCollection.snoopyHouses.count == 3)
+        #expect(animationCollection.snoopyHouses.sorted {
             $0.absoluteString < $1.absoluteString
-        } == specialImages.sorted {
+        } == snoopyHouses.sorted {
             $0.absoluteString < $1.absoluteString
         })
     }
 
     @Test func TestGroupImageSequencesWithMultipleTos() {
         let animationCollection = AnimationCollection.from(files: imageSequenceWithMultipleTos.shuffled())
-        #expect(animationCollection.specialImages.count == 0)
+        #expect(animationCollection.snoopyHouses.count == 0)
         let animations = animationCollection.jumpGraph.sorted {
             $0.key.name < $1.key.name || ($0.key.urls.last?.path() ?? "") < ($1.key.urls.last?.path() ?? "")
         }
@@ -384,9 +387,10 @@ struct SnoopyTestAppTests {
         let animationCollection = AnimationCollection.from(
             files: [rphLoop, rph002] + rphToBP001
         )
-        #expect(animationCollection.rph.count == 1)
-        #expect(animationCollection.rph.first?.name == "RPH002")
-        #expect(animationCollection.rph.first?.designated == false)
+        let rphPoses = animationCollection.jumpGraph.keys.filter { NameUtil.isRoofPose($0.name) && !$0.designated }
+        #expect(rphPoses.count == 1)
+        #expect(rphPoses.first?.name == "RPH002")
+        #expect(rphPoses.first?.designated == false)
         #expect(animationCollection.wakeAnimations.count == 1)
         #expect(animationCollection.wakeAnimations.first?.designated == true)
     }

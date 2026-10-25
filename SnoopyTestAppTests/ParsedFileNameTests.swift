@@ -129,6 +129,23 @@ struct ParsedFileNameTests {
         #expect(!NameUtil.isDreamTransition("CA123"))
     }
 
+    @Test func testIsNonDreamyTransition() async throws {
+        #expect(NameUtil.isNonDreamyTransition("ST001"))
+        #expect(NameUtil.isNonDreamyTransition("ST005"))
+        #expect(!NameUtil.isNonDreamyTransition("ST002"))
+    }
+
+    @Test func testIsOutroOnlyTransition() async throws {
+        #expect(NameUtil.isOutroOnlyTransition("ST006"))
+        #expect(!NameUtil.isOutroOnlyTransition("ST001"))
+    }
+
+    @Test func testIsSpecialConnection() async throws {
+        let resourceName = "SS" + [randomInt, randomInt, randomInt].lazy.map(String.init).joined()
+        #expect(NameUtil.isSpecialConnection(resourceName))
+        #expect(!NameUtil.isSpecialConnection("CA123"))
+    }
+
     @Test func testIsMask() async throws {
         let resourceName = "TM" + [randomInt, randomInt, randomInt].lazy.map(String.init).joined()
         #expect(NameUtil.isMask(resourceName))
