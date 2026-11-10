@@ -49,8 +49,7 @@ struct SnoopyModel {
     private(set) var specialConnection: Clip<ImageSequence>?
     
     init() {
-//        snoopyHouse = SnoopyModel.animations.snoopyHouses.randomElement()!
-        snoopyHouse = SnoopyModel.animations.snoopyHouses.first { $0.lastPathComponent.contains("IS038") }!
+        snoopyHouse = SnoopyModel.animations.snoopyHouses.randomElement()!
     }
     
     var background: URL? {
