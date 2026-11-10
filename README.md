@@ -1,6 +1,15 @@
 # Snoopy
 Snoopy screensaver from tvOS for macOS.
 
+## Disclaimer
+
+**Snoopy Screensaver** is an independent, unofficial, non-commercial open-source project created for educational and personal use. This project is **not** affiliated with, associated with, authorized by, endorsed by, or in any way officially connected with **Apple Inc.** or **Peanuts Worldwide LLC**, or any of their subsidiaries or affiliates.
+
+* **Snoopy**, **Woodstock**, **Peanuts**, and all related characters, names, marks, and animations are trademarks and copyrighted properties of **Peanuts Worldwide LLC**.
+* **Apple**, **Mac**, **macOS**, **Apple TV**, **Apple Watch**, and **tvOS** are trademarks of **Apple Inc.**, registered in the U.S. and other countries and regions.
+
+Any open-source license included in this repository applies **solely to the original source code** written for this project and grants no rights, licenses, or permissions to any third-party trademarks, character designs, or media assets, all of which remain the exclusive property of their respective owners.
+
 ## Features
 * SwiftUI built
 * Support all animations from tvOS with masks during transitions

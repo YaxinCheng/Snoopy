@@ -134,7 +134,8 @@ final class SnoopyScene: SKScene {
     private func setupImageSnoopyHouse(_ house: URL) async throws -> some SKNode {
         let texture = try await SKTexture.asyncFrom(contentsOf: house)
         let houseNode = SKSpriteNode(texture: texture)
-        houseNode.size = CGSize(width: size.width * HOUSE_SCALE, height: size.height * HOUSE_SCALE)
+        let widthScale = house.lastPathComponent.contains("IS038") ? 1 : HOUSE_SCALE
+        houseNode.size = CGSize(width: size.width * widthScale, height: size.height * HOUSE_SCALE)
         return houseNode
     }
 
